@@ -20,7 +20,7 @@ Install dependencies
 Uses yaml config files to define experiment and tracks results using [weights and biases](https://wandb.ai/site)
 
 ## Experiment Steps
-An experiment consists of several steps. However, an experiment may be run on a single step or a subset.
+An experiment consists of several steps which are all defined in the **config file**. An experiment may be run on a single step or a subset of steps.
 1. [Load reward model](#load-reward-model)
 2. [Load data](#load-data)
 3. [Query model](#query-model)
@@ -29,32 +29,43 @@ An experiment consists of several steps. However, an experiment may be run on a 
 ### Load Reward Model
 The reward model is defined in the config file in the following way:
 ```yaml
-- model:
-  - id: my_reward_model
-  - path: EleutherAI/gpt-j-6b
-  - ckpt: https://huggingface.co/Dahoas/gptj-rm-static/resolve/main/hf_ckpt.pt
-  - tokenizer: default
-  - embedding: default
-  - norm: default
+model:
+  id: my_reward_model
+  path: EleutherAI/gpt-j-6b
+  ckpt: https://huggingface.co/Dahoas/gptj-rm-static/resolve/main/hf_ckpt.pt
+  tokenizer: default
+  embedding: default
+  norm: default
 ```
   entrypoint: RewardModel
 
 ### Load Data
 The data is defined in the config file in the following way:
 ```yaml
-- data:
-  - id: my_data
-  - path: nq_open
-  - schema:
-    - train:
-      - question
-      - answer
-  - sample: default
-    - method: first
-    - n: 1000
+data:
+  id: my_data
+  path: nq_open
+  schema:
+    train:
+      - row
+        question: question
+        answer: answer
+  sample: default
+    method: first
+    n: 1000
 ```
 
 ### Query Model
+```yaml
+model:
+  id: my_query
+  path: EleutherAI/gpt-j-6b
+  ckpt: https://huggingface.co/Dahoas/gptj-rm-static/resolve/main/hf_ckpt.pt
+  tokenizer: default
+  embedding: default
+  norm: default
+```
+  entrypoint: RewardModel
 
 ### Analyze Responses
 
