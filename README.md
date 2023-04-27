@@ -27,8 +27,32 @@ An experiment consists of several steps. However, an experiment may be run on a 
 4. [Analyze responses](#analyze-reponses)
 
 ### Load Reward Model
+The reward model is defined in the config file in the following way:
+```yaml
+- model:
+  - id: my_reward_model
+  - path: EleutherAI/gpt-j-6b
+  - ckpt: https://huggingface.co/Dahoas/gptj-rm-static/resolve/main/hf_ckpt.pt
+  - tokenizer: default
+  - embedding: default
+  - norm: default
+```
+  entrypoint: RewardModel
 
 ### Load Data
+The data is defined in the config file in the following way:
+```yaml
+- data:
+  - id: my_data
+  - path: nq_open
+  - schema:
+    - train:
+      - question
+      - answer
+  - sample: default
+    - method: first
+    - n: 1000
+```
 
 ### Query Model
 
