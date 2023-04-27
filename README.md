@@ -59,13 +59,35 @@ data:
 ```yaml
 model:
   id: my_query
-  path: EleutherAI/gpt-j-6b
-  ckpt: https://huggingface.co/Dahoas/gptj-rm-static/resolve/main/hf_ckpt.pt
-  tokenizer: default
-  embedding: default
-  norm: default
-```
   entrypoint: RewardModel
+  chunk_size: 1
+  message:
+    roles: default
+    unravel: default
+  tokenizer: 
+    truncation: False
+    max_length: 550
+    padding: max_length
+  forward: 
+    inference: False
+    args:
+        input_ids: None
+        past_key_values: None
+        attention_mask: None
+        token_type_ids: None
+        position_ids: None
+        head_mask: None
+        inputs_embeds: None
+        mc_token_ids: None
+        labels: None
+        return_dict: False
+        output_attentions: False
+        output_hidden_states:False
+  metrics:
+    - loss
+    - chosen_end_scores
+    - rejected_end_scores
+```
 
 ### Analyze Responses
 
