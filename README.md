@@ -19,7 +19,11 @@ Install dependencies
 
 Uses yaml config files to define experiment and tracks results using [weights and biases](https://wandb.ai/site)
 
-## Experiment Steps
+To run an experiment:
+
+`python3 main --config <file_name>`
+
+## Config
 An experiment consists of several steps which are all defined in the **config file**. An experiment may be run on a single step or a subset of steps.
 1. [Load reward model](#load-reward-model)
 2. [Load data](#load-data)
@@ -56,6 +60,8 @@ data:
 ```
 
 ### Query Model
+The query is defined in the config file in the following way:
+
 ```yaml
 model:
   id: my_query
@@ -90,6 +96,8 @@ model:
 ```
 
 ### Analyze Responses
+The analysis is defined in the config file in the following way:
+
 ```yaml
 analyze:
   id: my_analysis
