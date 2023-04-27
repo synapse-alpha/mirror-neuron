@@ -67,7 +67,7 @@ data:
   path: nq_open
   schema:
     train:
-      - row
+      - row:
         question: question
         answer: answer
   sample: default
