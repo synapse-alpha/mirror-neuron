@@ -23,7 +23,8 @@ To run an experiment:
 
 `python3 main --config <file_name>`
 
-## Config
+## Config File
+
 An experiment consists of several steps which are all defined in the **config file**. An experiment may be run on a single step or a subset of steps.
 1. [Load reward model](#load-reward-model)
 2. [Load data](#load-data)
@@ -105,11 +106,33 @@ analyze:
     - question_length
     - num_words
     - avg_word_length
+    - embedding:
+      id: my_sentence_embedding
+      type: sentence
+      path: sentence-transformers/all-MiniLM-L6-v2
+  estimators:
+    - gbr:
+      name: GradientBoostingRegressor
+      args:
+        n_estimators: 100
+        min_samples_leaf: 5
+        validation_fraction: 0.1
+        n_iter_no_change: 10 
+        random_state: 0 
+        verbose: 1 
+        subsample: 0.9     
+  predict:
+    - loss:
+      x: embedding
+      estimator: gbr
+    - chosen_end_scores:
+      x: embedding
+      estimator: gbr    
   plot:
     - loss:
       - question_length
       - num_words
-      - avg_word_length      
+      - avg_word_length   
     - chosen_end_scores:
       - question_length
       - num_words
