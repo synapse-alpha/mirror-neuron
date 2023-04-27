@@ -4,20 +4,29 @@ Experiments on bittensor reward models to analyze behaviour and find exploits. T
 
 # Setup
 Create a virtual environment
-
-`python3 -m venv env`
+```bash
+python3 -m venv env
+```
 
 Source virtual environment
-
-`source env/bin/activate`
+```bash
+source env/bin/activate
+```
 
 Install dependencies
-
-`pip install -r requirements.txt`
+```bash
+pip install -r requirements.txt
+```
 
 **Requires bittensor==4.0.0**
+```bash
+pip list | grep bittensor
+```
 
-`pip list | grep bittensor`
+Login to weights and biases
+```bash
+wandb login
+```
 
 # Run
 
@@ -25,7 +34,9 @@ Uses yaml config files to define experiment and tracks results using [weights an
 
 To run an experiment:
 
-`python3 main --config <file_name>`
+```bash
+python3 main --config <file_name>
+```
 
 ## Config File
 
