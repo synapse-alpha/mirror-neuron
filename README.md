@@ -70,6 +70,9 @@ The query is defined in the config file in the following way:
 ```yaml
 model:
   id: my_query
+  requires:
+    - my_reward_model    
+    - my_data  
   entrypoint: RewardModel
   chunk_size: 1
   message:
@@ -91,13 +94,16 @@ model:
         inputs_embeds: None
         mc_token_ids: None
         labels: None
-        return_dict: False
+        return_dict: True
         output_attentions: False
-        output_hidden_states:False
-  metrics:
+        output_hidden_states: True
+  store:
     - loss
     - chosen_end_scores
     - rejected_end_scores
+    - hidden_states
+    - tokens
+    - embeddings
 ```
 
 ### Analyze Responses
@@ -106,6 +112,8 @@ The analysis is defined in the config file in the following way:
 ```yaml
 analyze:
   id: my_analysis
+  requires:
+    - my_query
   compute:
     - question_length
     - num_words
