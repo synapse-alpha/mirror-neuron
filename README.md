@@ -79,7 +79,7 @@ data:
 The query is defined in the config file in the following way:
 
 ```yaml
-model:
+query:
   id: my_query
   requires:
     - my_reward_model    
