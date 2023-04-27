@@ -90,6 +90,26 @@ model:
 ```
 
 ### Analyze Responses
-
+```yaml
+analyze:
+  id: my_analysis
+  compute:
+    - question_length
+    - num_words
+    - avg_word_length
+  plot:
+    - loss:
+      - question_length
+      - num_words
+      - avg_word_length      
+    - chosen_end_scores:
+      - question_length
+      - num_words
+      - avg_word_length     
+    - rejected_end_scores:
+      - question_length
+      - num_words
+      - avg_word_length           
+```
 
 
