@@ -1,19 +1,26 @@
+import wandb
+
+import torch
+import os
 import sys
 sys.path.insert(0,'neurons/text/prompting/validators/core/')
 from reward import RewardModel
 from neuron import neuron
 
-import torch
-import os
+from ..base import DummyDendritePool, DummyGatingModel, DummyRewardModel, DummyNeuron
+
+
+
 
 def load_model(id, path, ckpt, **kwargs):
     """
     Load the model from the path
     """
 
+    wandb.config.get('model')
     config = neuron.config()
 
-    reward_model = RewardModel( model_path = path, device = config.neuron.device)
+    reward_model = DummyRewardModel( model_path = path, device = config.neuron.device)
     # the lines below massive speed up inference (~5x)
     reward_model.eval()
     reward_model.half()
@@ -35,3 +42,13 @@ def load_model(id, path, ckpt, **kwargs):
     
     return reward_model
 
+def load_model_2(id, path, ckpt, **kwargs):
+    """
+    Load the model from the path
+    """
+
+    wandb.config.get('model')
+    
+    model = CustomNeuron( model_path = path, device = config.neuron.device)
+    
+    return model

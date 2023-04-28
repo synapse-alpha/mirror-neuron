@@ -1,8 +1,8 @@
 import wandb
 
-from model import load_model
-from data import load_data
-from utils import load_config, parse_args
+from loaders.model import load_model
+from loaders.data import load_data
+from loaders.config import load_config
 from query import run_query
 from analysis import run_analysis
 

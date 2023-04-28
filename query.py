@@ -3,6 +3,7 @@ import time
 import pickle
 import tqdm
 import pandas as pd
+from utils import save_results, load_results
 
 def run_query(id, reward_model, data, chunk_size, tokenizer, forward, store, message, entrypoint, **kwargs):
     """
@@ -24,9 +25,9 @@ def run_query(id, reward_model, data, chunk_size, tokenizer, forward, store, mes
     """
 
     results_path = id
-    load_results = True
+    load = True
 
-    if load_results and os.path.exists(results_path):
+    if load and os.path.exists(results_path):
         # Reuse results from previous run
         return load_results(results_path)
 
@@ -55,25 +56,3 @@ def run_query(id, reward_model, data, chunk_size, tokenizer, forward, store, mes
 
     return pd.DataFrame(outputs)
 
-def save_results(path, outputs):
-
-    if path.endswith('.pkl'):
-        with open(path, 'wb') as f:
-            pickle.dump(outputs, f)
-    elif path.endswith('.csv'):
-        df = pd.DataFrame(outputs)
-        df.to_csv(path, index=False)
-    else:
-        raise ValueError(f'Unknown file extension for {path!r}')
-
-def load_results(path):
-
-    if path.endswith('.pkl'):
-        with open(path, 'rb') as f:
-            outputs = pickle.load(f)
-            return pd.DataFrame(outputs)
-        print(f'Loaded {len(outputs)} results from {path!r}')
-    elif path.endswith('.csv'):
-        return pd.read_csv(path)
-    else:
-        raise ValueError(f'Unknown file extension for {path!r}')
