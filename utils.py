@@ -7,6 +7,7 @@ import pandas as pd
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=str)
+    parser.add_argument('--entity', type=str, default='monkey-n', help='Wandb entity')
     return parser.parse_args()
 
 
