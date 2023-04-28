@@ -1,0 +1,11 @@
+tqdm
+scikit-learn
+pandas
+numpy
+plotly
+pickle
+torch
+datasets
+transformers
+sentence-transformers
+wandb
