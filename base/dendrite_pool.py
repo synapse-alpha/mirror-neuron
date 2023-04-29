@@ -5,10 +5,9 @@ import torch
 
 from types import SimpleNamespace
 from dataclasses import dataclass
-import bittensor as bt
 
-import bt.text_prompting_pool as DendritePool
-
+import bittensor
+from bittensor._dendrite.text_prompting.dendrite_pool import TextPromptingDendritePool as DendritePool
 
 @dataclass
 class DummyRPCResponse:

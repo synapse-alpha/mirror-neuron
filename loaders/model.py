@@ -1,14 +1,12 @@
 import wandb
-
 import torch
 import os
-import sys
-sys.path.insert(0,'neurons/text/prompting/validators/core/')
-from reward import RewardModel
-from neuron import neuron
+from sources.neuron import neuron
 
-from ..base import DummyDendritePool, DummyGatingModel, DummyRewardModel, DummyNeuron
-
+from base.dendrite_pool import DummyDendritePool
+from base.gating import DummyGatingModel
+from base.reward import DummyRewardModel
+from base.neuron import DummyNeuron, CustomNeuron
 
 
 

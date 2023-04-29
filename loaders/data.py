@@ -1,6 +1,6 @@
 import datasets
 import numpy as np
-from ..base import DummyDendritePool
+from base.dendrite_pool import DummyDendritePool
 
 
 def load_data(id, path, schema, sample, **kwargs):

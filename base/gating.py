@@ -1,11 +1,8 @@
 import wandb
 import torch
 
-import sys
-sys.path.insert(0,'neurons/text/prompting/validators/core/')
-
-from gating import GatingModel
-import bittensor as bt
+from sources.gating import GatingModel
+import bittensor
 
 
 

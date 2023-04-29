@@ -2,12 +2,9 @@ import wandb
 import random
 import torch
 import os
-import sys
-sys.path.insert(0,'neurons/text/prompting/validators/core/')
+from sources.reward import RewardModel
 
-from reward import RewardModel
-
-import bittensor as bt
+import bittensor
 
 
 class DummyRewardModel( torch.nn.Module ):
