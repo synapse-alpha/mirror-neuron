@@ -1,10 +1,11 @@
 import wandb
 
-from model import load_model
-from data import load_data
-from utils import load_config, parse_args
+from loaders.model import load_model
+from loaders.data import load_data
+from loaders.config import load_config
 from query import run_query
 from analysis import run_analysis
+from utils import parse_args
 
 # note that you dont need to pass arguments throughout the code because wandb.config is a global variable
 
@@ -24,7 +25,7 @@ def main():
     responses = None
 
     wandb.login()
-    run = wandb.init(project="reward-model", entity='monkey-n', config=config)
+    run = wandb.init(project="reward-model", entity=args.entity, config=config)
 
     # Load the model
     if config.get('model'):
