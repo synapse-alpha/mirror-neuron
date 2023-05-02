@@ -4,6 +4,13 @@ Creates **tracked experiments on bittensor text prompting models** to analyze be
 
 The goal of this repo is to enable systematic study of the interaction between components of the network and their effect on network performance.  
 
+
+<picture>
+  <img alt="Shows an illustrated sun in light mode and a moon with stars in dark mode." src="https://user-images.githubusercontent.com/6709103/235761418-c305c8ee-dc84-46fb-851c-e2cf3b074366.png" width=400>
+</picture>
+
+
+
 An experiment contains 4 steps:
 1. **Model**: Define model (at present this must be a text prompting validator neuron)
 2. **Data**: Define data to query the model
