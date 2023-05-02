@@ -51,16 +51,16 @@ class QueryConfigTemplate(BaseConfigTemplate):
   chunk_size: int = 1
   save_interval: int = 100
   message: dict = None
+  ignore_attr: list = None
   tokenizer: dict = None
-  forward: dict = None
-  store: list = None
+  method: dict = None
 
 
 @dataclass
 class AnalysisConfigTemplate(BaseConfigTemplate):
   id: str
   requires: list
-  compute: dict = None
+  create_features: list = None
   estimators: dict = None
   predict: dict = None
-  plot: list = None
+  plot: dict = None

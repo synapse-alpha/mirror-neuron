@@ -122,8 +122,8 @@ class neuron:
         cls.add_args( parser )
         return bt.config( parser )
     
-    def __init__( self ):
-        self.config = neuron.config()
+    def __init__( self, config=None ):
+        self.config = neuron.config() if config is None else config
         self.check_config( self.config )
         self.alpha = self.config.alpha
         bt.logging( config = self.config, logging_dir = self.config.neuron.full_path )

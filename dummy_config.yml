@@ -12,7 +12,7 @@ model:
         seed: 0
         distribution: uniform
     reward_model:
-      name: ConstantRewardModel
+      name: RandomRewardModel
       args:
         forward_value: 1
         backward_value: 0
@@ -28,35 +28,34 @@ data:
           answer: answer
     sample:
       method: first
-      n: 1000
+      n: 100
 
 query:
     id: my_query
     chunk_size: 1
-    message:
-      roles: default
-      unravel: default
-    tokenizer:
-      truncation: False
-      max_length: 550
-      padding: max_length
-    forward:
-      inference: False
-      args:
-          input_ids: None
-    store:
-      - loss
+    method:
+      name: forward
+      # name: train
+      # args:
+      #   max_iter: 100
+    ignore_attr:
+      - hotkeys
+      - block
 
 analysis:
     id: my_analysis
     requires:
       - my_query
-    compute:
+    create_features:
       - question_length
       - num_words
       - avg_word_length
     plot:
-      - loss:
+      rewards:
+        - question_length
+        - num_words
+        - avg_word_length
+      scores:
         - question_length
         - num_words
         - avg_word_length

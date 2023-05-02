@@ -35,7 +35,7 @@ class DummyNeuron(neuron):
         self.reward_model = DummyRewardModel( metagraph = self.metagraph, reward_type='question_length' )
 
 
-class CustomNeuron(neuron):
+class Neuron(neuron):
 
     def __init__( self, alpha=0.01, dendrite_pool=None, gating_model=None, reward_model=None ):
         self.config = neuron.config()
