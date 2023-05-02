@@ -160,6 +160,8 @@ class neuron:
         self.dendrite_pool = bt.text_prompting_pool( keypair = self.wallet.hotkey, metagraph = self.metagraph )
         # History of forward events.
         self.history = queue.Queue( maxsize = self.config.neuron.max_history )
+        # History of weight events.
+        self.weight_history = queue.Queue( maxsize = self.config.neuron.max_history )        
         # Get a list of peers delegating to me
         delegated = self.subtensor.get_delegated( self.wallet.coldkeypub.ss58_address )
         self.my_nominators = { nomin[0]: nomin[1] for nomin in delegated[0][0].nominators } if len(delegated) else {}
