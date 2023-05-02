@@ -1,6 +1,8 @@
 # Mirror Neuron
 
-Experiments on bittensor models to analyze behaviour and find exploits. This package is structured in a general way so that it can be used for tracking other models such as the gating model. It is also intended to be extensible so that extra components can be tested in future versions.
+Enables tracked **experiments on bittensor text prompting models to analyze behaviour and find exploits**. 
+
+This package is structured in a general way so that components can be switched out. It is also intended to be extensible so that extra components can be tested in future versions. 
 
 # Setup
 Create a virtual environment
