@@ -4,12 +4,19 @@ import torch
 import wandb
 import numpy as np
 import pandas as pd
+from utils import load_results
+
+from loaders.templates import AnalysisConfigTemplate
 
 import plotly.express as px
 
 
 def run_analysis():
-    pass
+
+    template = AnalysisConfigTemplate(**wandb.config.analysis)
+    print(f'Template: {template}')
+
+    query_results = load_results(template.path)
 
 
 def run_plot(df, col, label, y='score'):
@@ -40,10 +47,10 @@ def run_plot(df, col, label, y='score'):
     # fig.write_html(f'figures/{col}_vs_score.html')
 
     # Create path for Plotly figure
-    fig.write_html(path_to_plotly_html, auto_play = False) 
+    fig.write_html(path_to_plotly_html, auto_play = False)
 
     # Add Plotly figure as HTML file into Table
-    table.add_data(wandb.Html(path_to_plotly_html))    
+    table.add_data(wandb.Html(path_to_plotly_html))
 
 
 

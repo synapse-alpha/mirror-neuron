@@ -20,34 +20,41 @@ def main():
     # Load the config file
     config = load_config(args.config)
 
-    reward_model = None
+    model = None
     data = None
-    responses = None
 
     wandb.login()
-    run = wandb.init(project="reward-model", entity=args.entity, config=config)
+    run = wandb.init(project="reward-model", entity=args.entity, config=config, mode='offline' if args.offline else 'online')
 
     # Load the model
     if config.get('model'):
-        reward_model = load_model(**config['model'])
-        print("Model loaded")
+        print(f'{"- "*40}\nLoading model:')
+        model = load_model()
+        run.log({"model_loaded": True})
+        print("\n>>> Model loaded successfully\n")
 
     # Load the data
     if config.get('data'):
-        data = load_data(**config['data'])
-        print("Data loaded")
+        print(f'{"- "*40}\nLoading query data:')
+        data = load_data()
+        run.log({"data_loaded": True})
+        print("\n>>> Data loaded successfully\n")
 
     # Run the queries
     if config.get('query'):
-        responses = run_query(reward_model=reward_model, data=data, **config['query'])
-        print("Queries executed")
+        print(f'{"- "*40}\nRunning queries:')
+        run_query(model=model, data=data)
+        run.log({"queries_executed": True})
+        print("\n>>> Queries executed successfully\n")
 
     # Run the analysis
     if config.get('analysis'):
-        run_analysis(reward_model=reward_model, data=data, responses=responses, **config['analysis'])
-        print("Analysis executed")
-    
-    run.log_code()
+        print(f'{"- "*40}\nRunning analysis:')
+        run_analysis(reward_model=model, data=data, **config['analysis'])
+        run.log({"analysis_executed": True})
+        print("\n>>> Analysis executed successfully\n")
+
+    # run.log_code()
 
 if __name__ == "__main__":
     main()

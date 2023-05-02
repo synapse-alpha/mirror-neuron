@@ -1,0 +1,62 @@
+model:
+    id: my_model
+    dendrite_pool:
+      name: DummyDendritePool
+      args:
+        fail_rate: 0.1
+        data_path: nq_open
+    gating_model:
+      name: RandomGatingModel
+      args:
+        frozen: True
+        seed: 0
+        distribution: uniform
+    reward_model:
+      name: ConstantRewardModel
+      args:
+        forward_value: 1
+        backward_value: 0
+    alpha: 0.01
+
+data:
+    id: my_data
+    path: nq_open
+    schema:
+      train:
+        - row:
+          question: question
+          answer: answer
+    sample:
+      method: first
+      n: 1000
+
+query:
+    id: my_query
+    chunk_size: 1
+    message:
+      roles: default
+      unravel: default
+    tokenizer:
+      truncation: False
+      max_length: 550
+      padding: max_length
+    forward:
+      inference: False
+      args:
+          input_ids: None
+    store:
+      - loss
+
+analysis:
+    id: my_analysis
+    requires:
+      - my_query
+    compute:
+      - question_length
+      - num_words
+      - avg_word_length
+    plot:
+      - loss:
+        - question_length
+        - num_words
+        - avg_word_length
