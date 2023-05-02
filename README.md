@@ -2,7 +2,7 @@
 
 Creates **tracked experiments on bittensor text prompting models** to analyze behaviour and find exploits. 
 
-The goal of this repo is to enable systematic study of the interaction between components of the network and their effect on network performance.
+The goal of this repo is to enable systematic study of the interaction between components of the network and their effect on network performance.  
 
 An experiment contains 4 steps:
 1. **Model**: Define model (at present this must be a text prompting validator neuron)
@@ -17,7 +17,7 @@ The custom `Neuron` model has following controllable components:
 
 The custom `Neuron` instance has a modified entrypoint `__init__` function, but it can be interfaced with using the *same API as bittensor* in order to examine the behaviour of the system (`.forward()`, `.train()`, `.inference()`) in the **query** step of an experiment.
 
-** Note that this repo explicitly copies and modifies the source code of all files in `neurons/text/prompting/validator/core/` so that they are more configurable for experimentation purposes**
+**Note**: This repo explicitly copies and modifies the source code of all files in `neurons/text/prompting/validator/core/` so that they are more configurable for experimentation purposes. It would be ideal if a future version of bittensor reflects a similarly configurable API so that no source code needs to be copied into this repo.
 
 # Setup
 Create a virtual environment
