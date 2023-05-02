@@ -1,29 +1,32 @@
+import wandb
+import torch
 import datasets
-import numpy as np
-from base.dendrite_pool import DummyDendritePool
+from loaders.templates import DataConfigTemplate
 
 
-def load_data(id, path, schema, sample, **kwargs):
+def load_data(**kwargs):
     """
     Load the data from the path
 
     Returns:
         data: list of dictionaries with keys from schema {question, answer}
     """
-    data = datasets.load_dataset(path)
-
-    data = data['train']
+    template = DataConfigTemplate(**wandb.config.data)
+    print(f'Template: {template}')
+    
+    data = datasets.load_dataset(template.path)['train']
 
     # apply sampling if not None
-    if sample is not None:
-        n_sample = sample['n']
-        if sample['method'] == 'first':
-            indices = np.arange(n_sample)
-        elif sample['method'] == 'random':
-            n_sample = sample['n']
-            seed = sample.get('seed', 42)
-            indices = np.random.RandomState(seed=seed).choice(len(data['train']), n_sample, replace=False)
+    if template.sample is not None:
+        n_sample = template.sample['n']
+        print(f'Sampling {n_sample} samples from {len(data)} samples using {template.sample["method"]} method')
+        if template.sample['method'] == 'first':
+            return data[:n_sample]
+        elif template.sample['method'] == 'random':
+            n_sample = template.sample['n']
+            seed = template.sample.get('seed', 42)
+            generator = torch.Generator().manual_seed(seed)
+            return torch.randperm(len(data), generator=generator)[:n_sample]
 
-        data = [data[i] for i in indices]
-
+    print(f'Loaded {len(data)} samples from {template.path}')
     return data
