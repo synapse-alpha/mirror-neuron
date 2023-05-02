@@ -1,6 +1,6 @@
 import torch
 from sources.reward import RewardModel
-from base.generators import ConstantValue, RandomValue
+from base.values import ConstantValue, RandomValue
 from base.metagraph import MetagraphMixin
 from abc import ABC, abstractmethod
 

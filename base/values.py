@@ -14,6 +14,9 @@ class ConstantValue( torch.nn.Module ):
 
     def forward(self, x, n, **kwargs):
         return torch.ones( n ) * self.value
+    
+    def __repr__(self):
+        return f'ConstantValue({self.value})'
 
 class RandomValue( torch.nn.Module ):
 
@@ -34,6 +37,9 @@ class RandomValue( torch.nn.Module ):
 
     def forward(self, x, n, **kwargs):
         return self.sampler( n, generator=self.generator ) * self.p0 + self.p1
+    
+    def __repr__(self):
+        return f'RandomValue(seed={self.seed}, distribution={self.distribution!r}, p0={self.p0}, p1={self.p1})'
 
 class StepValue( torch.nn.Module ):
 
@@ -46,6 +52,9 @@ class StepValue( torch.nn.Module ):
 
     def forward(self, x, n, **kwargs):
         return torch.linspace( self.lo, self.hi, self.length )[self.start:self.start+n]
+    
+    def __repr__(self):
+        return f'StepValue(lo={self.lo}, hi={self.hi}, length={self.length}, start={self.start})'
 
 class FrozenRandomValue( RandomValue ):
 
@@ -58,3 +67,6 @@ class FrozenRandomValue( RandomValue ):
             self.frozen_values = super(FrozenRandomValue, self).forward(x, n, **kwargs)
 
         return self.frozen_values
+    
+    def __repr__(self):
+        return f'FrozenRandomValue(seed={self.seed}, distribution={self.distribution!r}, p0={self.p0}, p1={self.p1})'
