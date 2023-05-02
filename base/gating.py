@@ -1,6 +1,6 @@
 import torch
 
-from base.generators import ConstantValue, RandomValue, FrozenRandomValue
+from base.values import ConstantValue, RandomValue, FrozenRandomValue
 from base.metagraph import MetagraphMixin
 from abc import ABC, abstractmethod
 
