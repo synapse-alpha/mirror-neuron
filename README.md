@@ -1,8 +1,23 @@
 # Mirror Neuron
 
-Enables tracked **experiments on bittensor text prompting models to analyze behaviour and find exploits**. 
+Creates **tracked experiments on bittensor text prompting models** to analyze behaviour and find exploits. 
 
-This package is structured in a general way so that components can be switched out. It is also intended to be extensible so that extra components can be tested in future versions. 
+The goal of this repo is to enable systematic study of the interaction between components of the network and their effect on network performance.
+
+An experiment contains 4 steps:
+1. **Model**: Define model (at present this must be a text prompting validator neuron)
+2. **Data**: Define data to query the model
+3. **Query**: Query the model and generate response data 
+4. **Analysis**: Analyze the response data 
+
+The custom `Neuron` model has following controllable components:
+1. **Dendrite Pool** is replaced with `DummyDendritePool` which imitates the behaviour of the miners 
+2. **Gating Model** can be replaced with baseline models such as `RandomGatingModel`, `ConstantGatingModel` or more complex implementations (TBD)
+3. **Reward Model** can also be replaced with baseline models such as `RandomRewardModel`, `ConstantRewardModel` or more complex implementations (TBD)
+
+The custom `Neuron` instance has a modified entrypoint `__init__` function, but it can be interfaced with using the *same API as bittensor* in order to examine the behaviour of the system (`.forward()`, `.train()`, `.inference()`) in the **query** step of an experiment.
+
+** Note that this repo explicitly copies and modifies the source code of all files in `neurons/text/prompting/validator/core/` so that they are more configurable for experimentation purposes**
 
 # Setup
 Create a virtual environment
@@ -32,34 +47,39 @@ wandb login
 
 # Run
 
-Uses yaml config files to define experiment and tracks results using [weights and biases](https://wandb.ai/site)
+Each run requires a yaml config file to define the experiment and track results using [weights and biases](https://wandb.ai/site)
 
 To run an experiment:
 
 ```bash
-python3 main --config <file_name>
+python3 main --config <file_name> --entity <wandb_entity>
+```
+
+To test locally (and not spam wandb)
+
+```bash
+python3 main --config <file_name> --entity <wandb_entity> --offline
 ```
 
 ## Config File
 
 An experiment consists of several steps which are all defined in the **config file**. An experiment may be run on a single step or a subset of steps.
-1. [Load reward model](#load-reward-model)
+1. [Load model](#load-model)
 2. [Load data](#load-data)
 3. [Query model](#query-model)
 4. [Analyze responses](#analyze-reponses)
 
-### Load Reward Model
-The reward model is defined in the config file in the following way:
+### Load  Model
+The model is defined in the config file in the following way:
 ```yaml
 model:
-  id: my_reward_model
+  id: my_model
   path: EleutherAI/gpt-j-6b
   ckpt: https://huggingface.co/Dahoas/gptj-rm-static/resolve/main/hf_ckpt.pt
   tokenizer: default
   embedding: default
   norm: default
 ```
-  entrypoint: RewardModel
 
 ### Load Data
 The data is defined in the config file in the following way:
