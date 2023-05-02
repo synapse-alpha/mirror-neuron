@@ -1,5 +1,6 @@
 import wandb
 
+from sources.neuron import neuron
 from loaders.model import load_model
 from loaders.data import load_data
 from loaders.config import load_config
@@ -24,7 +25,14 @@ def main():
     data = None
 
     wandb.login()
-    run = wandb.init(project="reward-model", entity=args.entity, config=config, mode='offline' if args.offline else 'online')
+    run = wandb.init(project="mirror-neuron", entity=args.entity, config=config, mode='offline' if args.offline else 'online')
+    
+    # capture bittensor default config and use mock wallet and subtensor
+    neuron_config = neuron.config()
+    neuron_config.subtensor._mock = True
+    neuron_config.wallet._mock = True
+    
+    run.log({"neuron_config": neuron_config})
 
     # Load the model
     if config.get('model'):
@@ -50,7 +58,7 @@ def main():
     # Run the analysis
     if config.get('analysis'):
         print(f'{"- "*40}\nRunning analysis:')
-        run_analysis(reward_model=model, data=data, **config['analysis'])
+        run_analysis(model=model, data=data)
         run.log({"analysis_executed": True})
         print("\n>>> Analysis executed successfully\n")
 

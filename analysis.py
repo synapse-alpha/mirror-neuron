@@ -6,72 +6,77 @@ import numpy as np
 import pandas as pd
 from utils import load_results
 
-from loaders.templates import AnalysisConfigTemplate
+from loaders.templates import AnalysisConfigTemplate, QueryConfigTemplate
 
+from pandas.api.types import is_list_like
 import plotly.express as px
 
+def _tabularize_df_hack(df):
+    """Convert list-like columns to tabular format
+    """
+    # detect list-like columns
+    cols = [c for c, ser in df.items() if ser.apply(lambda x: is_list_like(x)).any()]
+    df.loc[:, cols] = df.loc[:, cols].applymap(lambda x: np.array(x)[0])
+    
+def unwrap_df(df):
 
-def run_analysis():
+    # detect columns with lists
+    cols = [c for c, ser in df.items() if ser.apply(lambda x: is_list_like(x)).any()]
+
+def run_analysis(model=None, data=None):
 
     template = AnalysisConfigTemplate(**wandb.config.analysis)
     print(f'Template: {template}')
 
-    query_results = load_results(template.path)
+    load_path = QueryConfigTemplate(**wandb.config.query).save_path()
+
+    df = load_results(load_path)
+
+    # we want to unwrap the dataframe but we need to know which columns have lists and also how long the lists are
+    # df = unwrap_df(df)
+    print(df)
+    print(df.iloc[0])
+        
+    _tabularize_df_hack(df) # just take first element of everything list like
+    print(df)
+    print(df.iloc[0])
+
+    run_features(df, template.create_features)
+
+    if template.plot is not None:
+        for y, x_list in template.plot.items():
+            for x in x_list:
+                run_plot(df, x=x, y=y)
 
 
-def run_plot(df, col, label, y='score'):
+def run_plot(df, x, y='score'):
 
-#    table = wandb.Table(data=df, columns = ["x", "y"])
+    table = wandb.Table(data=df[[x,y]], columns = [x,y])
 
-#     wandb.log(
-#         {f'{y}_vs_{col}' : wandb.plot.line(table, "x", "y",
-#            title="Custom Y vs X Line Plot")})
-
-    figure_dir = wandb.config.get('plots_dir','./plotly_figures')
-    file_name = os.path.join(figure_dir, f'{col}_vs_{y}')
-    path_to_plotly_html = f'{file_name}.html'
-    # Create a table
-    table = wandb.Table(columns = [file_name])
-
-    corr = df.score.corr(df[col])
-    print(f'Correlation between {col} and score: {corr:.3f}')
-    fig = px.scatter(df, x=col, y='score',
-        opacity=0.75,
-            labels={col:label, 'y': 'Reward Score'},
-            title=f'Distribution of Reward Scores: Correlation = {corr:.2f}',
-            trendline='ols', marginal_y='histogram', marginal_x='histogram',
-            hover_data=['question'],
-            width=800, height=600, template='plotly_white')
-    # fig.show()
-    # fig.write_image(f'figures/{col}_vs_score.png')
-    # fig.write_html(f'figures/{col}_vs_score.html')
-
-    # Create path for Plotly figure
-    fig.write_html(path_to_plotly_html, auto_play = False)
-
-    # Add Plotly figure as HTML file into Table
-    table.add_data(wandb.Html(path_to_plotly_html))
+    wandb.log(
+        {f'{x}_vs_{y}' : wandb.plot.scatter(table, x, y,
+            title=f'{x} vs {y}')})
 
 
 
 
-def run_features(df, feature_names):
+def run_features(df, feature_names, col='message'):
 
     # make some high level features which describe salient properties of questions such as number of words, length of question, etc.
     if 'question_length' in feature_names:
-        df['question_length'] = df.question.str.len()
+        df['question_length'] = df[col].str.len()
 
     if 'num_words' in feature_names:
-        df['num_words'] = df.question.str.split().apply(len)
+        df['num_words'] = df[col].str.split().apply(len)
 
     if 'avg_word_length' in feature_names:
         df['avg_word_length'] = df.question_length / df.num_words
 
     if 'median_word_length' in feature_names:
-        df['median_word_length'] = df.question.str.split().apply(lambda x: np.median([len(w) for w in x]))
+        df['median_word_length'] = df[col].str.split().apply(lambda x: np.median([len(w) for w in x]))
 
     if 'first_word' in feature_names:
-        df['first_word'] = df.question.str.split().apply(lambda x: x[0])
+        df['first_word'] = df[col].str.split().apply(lambda x: x[0])
 
     return df
 

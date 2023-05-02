@@ -27,9 +27,9 @@ def load_results(path):
 
     if path.endswith('.pkl'):
         with open(path, 'rb') as f:
-            outputs = pickle.load(f)
-            return pd.DataFrame(outputs)
-        print(f'Loaded {len(outputs)} results from {path!r}')
+            events = pickle.load(f)
+            print(f'Loaded {len(events)} results from {path!r}')
+            return pd.DataFrame(events)
     elif path.endswith('.csv'):
         return pd.read_csv(path)
     else:

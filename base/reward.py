@@ -1,11 +1,13 @@
+import bittensor
 import torch
-from sources.reward import RewardModel
+
 from base.values import ConstantValue, RandomValue
 from base.metagraph import MetagraphMixin
 from abc import ABC, abstractmethod
 
-import bittensor
-    
+# expose raw RewardModel for use in other modules
+from sources.reward import RewardModel
+
 # include query failure as an additional behavior
 # TODO: inherit from RewardModel and just override init
 
@@ -86,7 +88,7 @@ class RandomRewardModel( BaseRewardModel ):
 
     def forward(self, x):
         # each neuron is given a constant score
-        return self.forward_type(x, n=1)
+        return self.forward_value(x, n=1)
 
     def backward(self, completions, rewards):
         # each neuron is given a constant score
