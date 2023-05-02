@@ -1,6 +1,6 @@
-# reward_model_analysis
+# Mirror Neuron
 
-Experiments on bittensor reward models to analyze behaviour and find exploits. This package is structured in a general way so that it can be used for tracking other models such as the gating model. It is also intended to be extensible so that extra components can be tested in future versions.
+Experiments on bittensor models to analyze behaviour and find exploits. This package is structured in a general way so that it can be used for tracking other models such as the gating model. It is also intended to be extensible so that extra components can be tested in future versions.
 
 # Setup
 Create a virtual environment
