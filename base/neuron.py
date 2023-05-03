@@ -12,16 +12,16 @@ from base.dendrite_pool import DummyDendritePool
 
 class Neuron(neuron):
 
-    def __init__( self, alpha=0.01, dendrite_pool=None, gating_model=None, reward_model=None, config=None  ):
+    def __init__( self, alpha=0.01, dendrite_pool=None, gating_model=None, reward_model=None, config=None, subtensor=None, wallet=None, metagraph=None ):
         self.config = neuron.config() if config is None else config
         self.check_config( self.config )
         self.alpha = alpha # for weight updating
         bittensor.logging( config = self.config, logging_dir = self.config.neuron.full_path )
 
-        self.subtensor = bittensor.subtensor ( config = self.config )
+        self.subtensor = subtensor or bittensor.subtensor ( config = self.config )
         self.device = torch.device( self.config.neuron.device )
-        self.wallet = bittensor.wallet ( config = self.config )
-        self.metagraph = bittensor.metagraph( netuid = self.config.netuid, network = self.subtensor.network )
+        self.wallet = wallet or bittensor.wallet ( config = self.config )
+        self.metagraph = metagraph or bittensor.metagraph( netuid = self.config.netuid, network = self.subtensor.network )
         self.wallet.create_if_non_existent()
 
         # History of forward events.

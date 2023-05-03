@@ -15,13 +15,14 @@ def _tabularize_df_hack(df):
     """Convert list-like columns to tabular format
     """
     # detect list-like columns
-    cols = [c for c, ser in df.items() if ser.apply(lambda x: is_list_like(x)).any()]
-    df.loc[:, cols] = df.loc[:, cols].applymap(lambda x: np.array(x)[0])
-    
-def unwrap_df(df):
+    list_cols = [c for c, ser in df.items() if ser.apply(lambda x: is_list_like(x)).any()]
+    for c in list_cols:
+        if isinstance(df.loc[0,c], torch.Tensor):
+            df[c] = df[c].apply(lambda x: x.detach().numpy())
+            
+        # here we just grab first index of the list (TEMPORARY HACK)
+        df[c] = df[c].apply(lambda x: np.array(x).flatten()[0])
 
-    # detect columns with lists
-    cols = [c for c, ser in df.items() if ser.apply(lambda x: is_list_like(x)).any()]
 
 def run_analysis(model=None, data=None):
 

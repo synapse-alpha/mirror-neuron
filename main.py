@@ -1,5 +1,5 @@
 import wandb
-
+import bittensor
 from sources.neuron import neuron
 from loaders.model import load_model
 from loaders.data import load_data
@@ -23,29 +23,33 @@ def main():
 
     model = None
     data = None
-
     wandb.login()
     run = wandb.init(
-        project="mirror-neuron", 
-        entity="mirror-neuron", 
-        config=config, 
+        project="mirror-neuron",
+        entity="mirror-neuron",
+        config=config,
         mode='offline' if args.offline else 'online',
         job_type=args.job_type,
         group=args.group,
+        tags=[k for k in ['model', 'data', 'query', 'analysis'] if config.get(k)]
     )
-    
+
     # capture bittensor default config and use mock wallet and subtensor
     bt_config = neuron.config()
     # bt_config.subtensor._mock = True
     bt_config.wallet._mock = True
     bt_config.neuron.dont_save_events = True
-    
+    bt_config.neuron.device = 'cpu'
+    subtensor = bittensor.subtensor ( config = bt_config )
+    metagraph = bittensor.metagraph( netuid = bt_config.netuid, network = subtensor.network )
+
+
     run.log({"bt_config": bt_config})
 
     # Load the model
     if config.get('model'):
         print(f'{"- "*40}\nLoading model:')
-        model = load_model(bt_config=bt_config)
+        model = load_model(bt_config=bt_config, metagraph=metagraph, subtensor=subtensor)
         run.log({"model_loaded": True})
         print("\n>>> Model loaded successfully\n")
 
