@@ -21,7 +21,7 @@ def _load_model_from_module(module, model_type, **kwargs):
     print(f'\nLooking for {model_name!r} model of type {model_type!r}')
 
     # convert model_type to class name. model_type is 'gating_model' and class name is 'GatingModel'
-    # required_class_name = model_type.title().replace('_','')
+    choices = [c for c in choices if c.endswith(model_type.title().replace('_', ''))]
     for cls_name in choices:
 
         if cls_name == model_name:
