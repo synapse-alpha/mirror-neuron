@@ -41,12 +41,14 @@ Install bittensor
 ```bash
 git clone -b text_prompting --single-branch https://github.com/opentensor/bittensor.git
 cd bittensor
-python -m pip install -e . # editable install
-cd .. # go back to main /mirror_neuron
+python -m pip install .
+cd ..
 ```
 
-Install dependencies
+Install mirror_neuron dependencies
 ```
+git clone https://github.com/opentensor/mirror_neuron.git
+cd mirror_neuron
 pip install -r requirements.txt
 ```
 
