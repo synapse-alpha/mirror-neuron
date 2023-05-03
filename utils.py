@@ -7,7 +7,6 @@ import pandas as pd
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=str)
-    parser.add_argument('--entity', type=str, default='monkey-n', help='Wandb entity')
     parser.add_argument('--offline', action='store_true', help='Run offline')
     return parser.parse_args()
 
