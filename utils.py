@@ -8,6 +8,8 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=str)
     parser.add_argument('--offline', action='store_true', help='Run offline')
+    parser.add_argument('--job_type', type=str, default='default', help='Job type')
+    parser.add_argument('--group', type=str, default='default', help='Job group')
     return parser.parse_args()
 
 
