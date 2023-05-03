@@ -29,16 +29,24 @@ The custom `Neuron` instance has a modified entrypoint `__init__` function, but 
 # Setup
 Create a virtual environment
 ```bash
-python3 -m venv env
+python3 -m venv ~/.mirror
 ```
 
 Source virtual environment
 ```bash
-source env/bin/activate
+source ~/.mirror/bin/activate
+```
+
+Install bittensor
+```bash
+git clone -b text_prompting --single-branch https://github.com/opentensor/bittensor.git
+cd bittensor
+python -m pip install -e . # editable install
+cd .. # go back to main /mirror_neuron
 ```
 
 Install dependencies
-```bash
+```
 pip install -r requirements.txt
 ```
 

@@ -1,4 +1,4 @@
-git+https://github.com/opentensor/bittensor.git@text_prompting
 datasets
 sklearn
 plotly
+wandb
