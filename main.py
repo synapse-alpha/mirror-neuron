@@ -28,16 +28,16 @@ def main():
     run = wandb.init(project="mirror-neuron", entity=args.entity, config=config, mode='offline' if args.offline else 'online')
     
     # capture bittensor default config and use mock wallet and subtensor
-    neuron_config = neuron.config()
-    neuron_config.subtensor._mock = True
-    neuron_config.wallet._mock = True
+    bt_config = neuron.config()
+    # bt_config.subtensor._mock = True
+    bt_config.wallet._mock = True
     
-    run.log({"neuron_config": neuron_config})
+    run.log({"bt_config": bt_config})
 
     # Load the model
     if config.get('model'):
         print(f'{"- "*40}\nLoading model:')
-        model = load_model()
+        model = load_model(bt_config=bt_config)
         run.log({"model_loaded": True})
         print("\n>>> Model loaded successfully\n")
 

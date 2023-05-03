@@ -13,9 +13,9 @@ def run_train(model):
     template = QueryConfigTemplate(**config)
     save_path = template.save_path()
     ignore = template.ignore_attr or {}    
-    max_iter = config.get('args', {}).get('max_iter',1000)
+    max_iter = template.method.get('args', {}).get('max_iter',1)
 
-    for i in range(max_iter):
+    for i in tqdm.tqdm(range(max_iter)):
         model.train(max_iter=1)
 
         if i % template.save_interval == 0:

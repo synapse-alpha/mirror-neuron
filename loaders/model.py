@@ -32,7 +32,7 @@ def _load_model_from_module(module, model_type, **kwargs):
     raise ValueError(f'Allowed models are {choices}, got {model_name}')
 
 
-def load_model(**kwargs):
+def load_model(bt_config=None, **kwargs):
     """
     Load the model from the path
     """
@@ -41,13 +41,17 @@ def load_model(**kwargs):
     print(f'Template: {template}')
 
     dendrite_pool = _load_model_from_module(base.dendrite_pool, 'dendrite_pool', **kwargs)
+    wandb.watch(dendrite_pool)
     gating_model = _load_model_from_module(base.gating, 'gating_model', **kwargs)
+    wandb.watch(gating_model)
     reward_model = _load_model_from_module(base.reward, 'reward_model', **kwargs)
+    wandb.watch(reward_model)
+    
     model = Neuron(
-                alpha=template.alpha,
                 dendrite_pool=dendrite_pool,
                 gating_model=gating_model,
                 reward_model=reward_model,
+                config=bt_config
             )
 
     print(f'Made model:\n{model}')
