@@ -37,8 +37,8 @@ class DummyNeuron(neuron):
 
 class Neuron(neuron):
 
-    def __init__( self, alpha=0.01, dendrite_pool=None, gating_model=None, reward_model=None ):
-        self.config = neuron.config()
+    def __init__( self, alpha=0.01, dendrite_pool=None, gating_model=None, reward_model=None, config=None  ):
+        self.config = neuron.config() if config is None else config
         self.check_config( self.config )
         self.alpha = alpha # for weight updating
         bittensor.logging( config = self.config, logging_dir = self.config.neuron.full_path )
@@ -74,5 +74,5 @@ class Neuron(neuron):
         self.reward_model = reward_model
 
     def __repr__(self):
-        return "CustomNeuron(alpha={}, dendrite_pool={}, gating_model={}, reward_model={})".format(self.alpha, self.dendrite_pool, self.gating_model, self.reward_model)
+        return f"CustomNeuron(alpha={self.alpha}, dendrite_pool={self.dendrite_pool}, gating_model={self.gating_model}, reward_model={self.reward_model}) using {self.config.neuron.device} device, metagraph={self.metagraph}, wallet={self.wallet}, subtensor={self.subtensor}"
 

@@ -125,7 +125,7 @@ class neuron:
     def __init__( self, config=None ):
         self.config = neuron.config() if config is None else config
         self.check_config( self.config )
-        self.alpha = self.config.alpha
+        self.alpha = self.config.neuron.alpha
         bt.logging( config = self.config, logging_dir = self.config.neuron.full_path )
         print( self.config )
         

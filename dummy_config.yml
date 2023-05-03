@@ -34,10 +34,10 @@ query:
     id: my_query
     chunk_size: 1
     method:
-      name: forward
-      # name: train
-      # args:
-      #   max_iter: 100
+      # name: forward
+      name: train
+      args:
+        max_iter: 10
     ignore_attr:
       - hotkeys
       - block
