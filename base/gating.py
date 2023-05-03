@@ -1,7 +1,6 @@
 import torch
 
 from base.values import ConstantValue, RandomValue, FrozenRandomValue
-from base.metagraph import MetagraphMixin
 from abc import ABC, abstractmethod
 
 # expose raw GatingModel for use in other modules
@@ -9,7 +8,7 @@ from sources.gating import GatingModel
 # TODO: inherit from GatingModel and just override init
 
 
-class BaseGatingModel( torch.nn.Module ):
+class BaseGatingModel( torch.nn.Module, ABC ):
 
     def __init__(self, metagraph):
         super(BaseGatingModel, self).__init__()
