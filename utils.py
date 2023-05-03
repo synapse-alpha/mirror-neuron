@@ -16,9 +16,10 @@ def parse_args():
 def save_results(path, outputs):
     outputs_cpu = []
     torch_tensor_cls = torch.tensor(1).__class__
-    for out in outputs:
+    for out in outputs:        
         out_cpu = {
-            k: v.to("cpu") if isinstance(v, torch_tensor_cls) else v \
+            k: v.clone().detach().to("cpu").numpy() if isinstance(v, torch_tensor_cls) and v.requires_grad else \
+            v.clone().to("cpu").numpy() if isinstance(v, torch_tensor_cls) else v \
                 for k,v in out.items()
         }
         outputs_cpu.append(out_cpu)
