@@ -256,11 +256,7 @@ class neuron:
         # We run the gating network here to get the best uids
         # Use the gating model to generate scores for each `uid`.
         scores = self.gating_model( unravelled_message ).to( self.device )
-        print(f'Gating model response: {scores}')
         bittensor.logging.trace( 'scores', scores )
-        print(f'Avaliable uids: {available_uids}')
-        
-        print(f'Scores shape: {scores.shape}, available uids shape: {available_uids.shape}')
 
         # Select the top `topk` `uids` based on the highest `scores`.
         # Use the selected `uids` to query the dendrite pool.
