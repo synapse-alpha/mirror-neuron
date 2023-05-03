@@ -256,7 +256,11 @@ class neuron:
         # We run the gating network here to get the best uids
         # Use the gating model to generate scores for each `uid`.
         scores = self.gating_model( unravelled_message ).to( self.device )
+        print(f'Gating model response: {scores}')
         bittensor.logging.trace( 'scores', scores )
+        print(f'Avaliable uids: {available_uids}')
+        
+        print(f'Scores shape: {scores.shape}, available uids shape: {available_uids.shape}')
 
         # Select the top `topk` `uids` based on the highest `scores`.
         # Use the selected `uids` to query the dendrite pool.
@@ -397,63 +401,61 @@ class neuron:
         last_epoch_block = self.subtensor.block
         
         # Start loop for training.
-        try:
-            for _ in range(max_iter):
-                # Query the network for a random question.
-                question = self.forward( 
-                    roles = ['system', 'user' ],
-                    messages = [ self.config.neuron.base_prompt, self.config.neuron.question_prompt ],
-                    topk = self.config.neuron.training_topk,
-                    random_sample_uids = True,
-                    train_gating_model = True,
-                    timeout = self.config.neuron.training_timeout
-                )
-                if question == None: continue # no responses from network.
+        for _ in range(max_iter):
+            # Query the network for a random question.
+            question = self.forward( 
+                roles = ['system', 'user' ],
+                messages = [ self.config.neuron.base_prompt, self.config.neuron.question_prompt ],
+                topk = self.config.neuron.training_topk,
+                random_sample_uids = True,
+                train_gating_model = True,
+                timeout = self.config.neuron.training_timeout
+            )
+            if question == None: continue # no responses from network.
+            
+            # Ask the network to complete the random question, training the gating network.
+            self.forward( 
+                roles = ['system', 'user' ],
+                messages = [ self.config.neuron.base_prompt, question.completion ],
+                topk = self.config.neuron.training_topk,
+                random_sample_uids = True,
+                train_gating_model = True,
+                timeout = self.config.neuron.training_timeout
+            )
+
+            # Resync metagraph before returning. (sync every 15 min or ~75 blocks)
+            if last_epoch_block % 10 == 0:
+                self.metagraph.sync()
+                self.my_nominators = { nomin[0]: nomin[1] for nomin in self.subtensor.get_delegated( self.wallet.coldkeypub.ss58_address )[0][0].nominators }
+
+            # Check if enough epoch blocks have elapsed since the last epoch.
+            epoch_length = self.subtensor.validator_epoch_length(self.config.netuid) if self.config.neuron.epoch_length_override == -1 else self.config.neuron.epoch_length_override
+            blocks_until_epoch = epoch_length - ( self.subtensor.block - last_epoch_block )
+            bittensor.logging.debug( 'blocks_until_epoch', blocks_until_epoch )
+            if blocks_until_epoch <= 0: 
+                bittensor.logging.trace( 'epoch()' )
+                bittensor.logging.info( 'block', self.subtensor.block )
+
+                # Update the last epoch block to the current epoch block.
+                last_epoch_block = self.subtensor.block
                 
-                # Ask the network to complete the random question, training the gating network.
-                self.forward( 
-                    roles = ['system', 'user' ],
-                    messages = [ self.config.neuron.base_prompt, question.completion ],
-                    topk = self.config.neuron.training_topk,
-                    random_sample_uids = True,
-                    train_gating_model = True,
-                    timeout = self.config.neuron.training_timeout
+                # Computes the average reward for each uid across non-zero values 
+                # using the rewards history stored in the self.history list.
+                uids, weights = self.compute_weights()
+                
+                self.weight_history.append( (uids, weights) ) # <---- ADDED to enable weight tracking
+                
+                bittensor.logging.info( 'weights', weights )
+
+                # Set the weights on chain via our subtensor connection.
+                self.subtensor.set_weights(
+                    wallet = self.wallet,
+                    netuid = self.config.netuid,
+                    uids = uids,
+                    weights = weights,
+                    wait_for_finalization = True,
                 )
 
-                # Resync metagraph before returning. (sync every 15 min or ~75 blocks)
-                if last_epoch_block % 10 == 0:
-                    self.metagraph.sync()
-                    self.my_nominators = { nomin[0]: nomin[1] for nomin in self.subtensor.get_delegated( self.wallet.coldkeypub.ss58_address )[0][0].nominators }
-
-                # Check if enough epoch blocks have elapsed since the last epoch.
-                epoch_length = self.subtensor.validator_epoch_length(self.config.netuid) if self.config.neuron.epoch_length_override == -1 else self.config.neuron.epoch_length_override
-                blocks_until_epoch = epoch_length - ( self.subtensor.block - last_epoch_block )
-                bittensor.logging.debug( 'blocks_until_epoch', blocks_until_epoch )
-                if blocks_until_epoch <= 0: 
-                    bittensor.logging.trace( 'epoch()' )
-                    bittensor.logging.info( 'block', self.subtensor.block )
-
-                    # Update the last epoch block to the current epoch block.
-                    last_epoch_block = self.subtensor.block
-                    
-                    # Computes the average reward for each uid across non-zero values 
-                    # using the rewards history stored in the self.history list.
-                    uids, weights = self.compute_weights()
-                    
-                    self.weight_history.append( (uids, weights) ) # <---- ADDED to enable weight tracking
-                    
-                    bittensor.logging.info( 'weights', weights )
-
-                    # Set the weights on chain via our subtensor connection.
-                    self.subtensor.set_weights(
-                        wallet = self.wallet,
-                        netuid = self.config.netuid,
-                        uids = uids,
-                        weights = weights,
-                        wait_for_finalization = True,
-                    )
-        except Exception as e:
-            bittensor.logging.info( 'Error in training loop', str( e ) )
     
     def compute_weights( self ) -> Tuple[ torch.LongTensor, torch.FloatTensor ]:
         """
