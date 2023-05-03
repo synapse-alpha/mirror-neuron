@@ -38,6 +38,7 @@ def main():
     bt_config = neuron.config()
     # bt_config.subtensor._mock = True
     bt_config.wallet._mock = True
+    bt_config.neuron.dont_save_events = True
     
     run.log({"bt_config": bt_config})
 

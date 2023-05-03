@@ -21,10 +21,7 @@ class BaseGatingModel( torch.nn.Module, ABC ):
     @abstractmethod
     def backward(self, completions, rewards):
         pass
-    
-    @abstractmethod
-    def reward(self, completions):
-        pass
+
 
 class LongestMessageGatingModel( BaseGatingModel ):
 
