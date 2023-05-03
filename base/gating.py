@@ -149,7 +149,7 @@ class SequentialGatingModel( BaseGatingModel ):
         """
         inputs = self.tokenizer( message, return_tensors="pt" ).to( self.device )
         hidden_states = self.model( inputs['input_ids'] )#.last_hidden_state[0, -1, :]
-        return self.linear( hidden_states[0] )[:,-1,:]
+        return self.linear( hidden_states[0] )[0,-1,:]
 
 
     def backward( self, scores: torch.FloatTensor, rewards: torch.FloatTensor ): 
@@ -160,12 +160,8 @@ class SequentialGatingModel( BaseGatingModel ):
                 rewards (:obj:`torch.FloatTensor` of shape :obj:`(metagraph.n)`):
                     Rewards for each uids as output by the reward model.
         """   
-        print(f'scores.shape: {scores.shape}, rewards.shape: {rewards.shape}')
         normalized_scores = torch.nn.functional.softmax( scores, dim=0 ).to( self.device )
-        print(f'scores.shape: {scores.shape}, normalized_scores.shape: {normalized_scores.shape}')
-        nomralized_rewards = torch.nn.functional.softmax( rewards, dim=0 ).to( self.device )
-        print(f'rewards.shape: {rewards.shape}, nomralized_rewards.shape: {nomralized_rewards.shape}')
-        loss = torch.nn.functional.mse_loss( normalized_scores, nomralized_rewards.detach() )
-        print(f'loss: {loss}')
+        normalized_rewards = torch.nn.functional.softmax( rewards, dim=0 ).to( self.device )
+        loss = torch.nn.functional.mse_loss( normalized_scores, normalized_rewards.detach() )
         loss.backward()
         self.optimizer.step()
