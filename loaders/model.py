@@ -6,11 +6,14 @@ import base.neuron
 from base.neuron import Neuron
 from loaders.templates import ModelConfigTemplate
 
-def _load_model_from_module(module, model_type, **kwargs):
+def _load_model_from_module(module, model_type, metagraph=None, watch=True, **kwargs):
     """
     Load the model from config
     """
-    choices = dir(module)
+    # convert model_type to class name. model_type is 'gating_model' and class name is 'GatingModel'
+    required_class_name = model_type.title().replace('_','')
+    choices = [choice for choice in dir(module) if choice.endswith(required_class_name)]
+
     if kwargs.get('config'):
         config = kwargs['config']
     else:
@@ -20,14 +23,16 @@ def _load_model_from_module(module, model_type, **kwargs):
     model_args = config.get('args', {})
     print(f'\nLooking for {model_name!r} model of type {model_type!r}')
 
-    # convert model_type to class name. model_type is 'gating_model' and class name is 'GatingModel'
-    # required_class_name = model_type.title().replace('_','')
     for cls_name in choices:
 
         if cls_name == model_name:
             print(f'+ Found {cls_name!r} in {model_type!r}. Creating instance with args: {model_args}')
             cls = getattr(module, cls_name)
-            return cls( ** model_args )
+            model = cls( metagraph=metagraph, ** model_args )
+            if watch:
+                wandb.watch(model, log='all')
+            return model
+
 
     raise ValueError(f'Allowed models are {choices}, got {model_name}')
 
@@ -41,18 +46,18 @@ def load_model(bt_config=None, **kwargs):
     print(f'Template: {template}')
 
     run_watch_experiment()
-    dendrite_pool = _load_model_from_module(base.dendrite_pool, 'dendrite_pool', **kwargs)
-    wandb.watch(dendrite_pool, log='all')
-    gating_model = _load_model_from_module(base.gating, 'gating_model', **kwargs)
-    wandb.watch(gating_model, log='all')
-    reward_model = _load_model_from_module(base.reward, 'reward_model', **kwargs)
-    wandb.watch(reward_model, log='all')
-    
+
+    watch = True
+    dendrite_pool = _load_model_from_module(base.dendrite_pool, model_type='dendrite_pool', watch=watch, **kwargs)
+    gating_model = _load_model_from_module(base.gating, model_type='gating_model', watch=watch, **kwargs)
+    reward_model = _load_model_from_module(base.reward, model_type='reward_model', watch=watch, **kwargs)
+
     model = Neuron(
                 dendrite_pool=dendrite_pool,
                 gating_model=gating_model,
                 reward_model=reward_model,
-                config=bt_config
+                config=bt_config,
+                **kwargs
             )
 
     print(f'Made model:\n{model}')
@@ -60,7 +65,7 @@ def load_model(bt_config=None, **kwargs):
     return model
 
 def run_watch_experiment():
-        
+
     import torch
     import torch.nn as nn
     import torch.optim as optim
@@ -73,7 +78,7 @@ def run_watch_experiment():
         nn.Linear(16, 1)
     )
     wandb.watch(model, log='all', log_freq=10, log_graph=True)
-    
+
 
     # Define a loss function and optimizer
     criterion = nn.MSELoss()
@@ -94,7 +99,7 @@ def run_watch_experiment():
         # Forward pass
         y_pred = model(x)
         loss = criterion(y_pred.squeeze(), y)
-        
+
         # Backward pass and optimization step
         optimizer.zero_grad()
         loss.backward()
@@ -105,4 +110,4 @@ def run_watch_experiment():
             wandb.log({"epoch": epoch, "loss": loss}, step=example_ct)
             print(f'Epoch {epoch}, Loss: {loss.item():.4f}')
 
-    
+

@@ -1,0 +1,61 @@
+model:
+    id: my_model
+    dendrite_pool:
+      name: DummyDendritePool
+      args:
+        fail_rate: 0.1
+        data_path: nq_open
+    gating_model:
+      name: SequentialGatingModel
+      args:
+        tokenizer_name: 'bert-base-cased'
+        hidden_size: 32
+        embedding_dim: 64
+    reward_model:
+      name: RandomRewardModel
+      args:
+        forward_value: 1
+        backward_value: 0
+    alpha: 0.01
+
+data:
+    id: my_data
+    path: nq_open
+    schema:
+      train:
+        - row:
+          question: question
+          answer: answer
+    sample:
+      method: first
+      n: 100
+
+query:
+    id: my_query
+    chunk_size: 1
+    method:
+      # name: forward
+      name: train
+      args:
+        max_iter: 10
+    ignore_attr:
+      - hotkeys
+      - block
+
+analysis:
+    id: my_analysis
+    requires:
+      - my_query
+    create_features:
+      - question_length
+      - num_words
+      - avg_word_length
+    plot:
+      rewards:
+        - question_length
+        - num_words
+        - avg_word_length
+      scores:
+        - question_length
+        - num_words
+        - avg_word_length
