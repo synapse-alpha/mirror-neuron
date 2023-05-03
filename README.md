@@ -69,13 +69,19 @@ Each run requires a yaml config file to define the experiment and track results 
 To run an experiment:
 
 ```bash
-python3 main --config <file_name> --entity <wandb_entity>
+python3 main --config <file_name>
 ```
 
 To test locally (and not spam wandb)
 
 ```bash
-python3 main --config <file_name> --entity <wandb_entity> --offline
+python3 main --config <file_name> --offline
+```
+
+## Example Usage
+Start with the dummy configuration to ensure everything works smoothly. 
+```bash
+python3 main --config dummy_config.yml
 ```
 
 ## Config File
@@ -160,7 +166,7 @@ query:
 The analysis is defined in the config file in the following way:
 
 ```yaml
-analyze:
+analysis:
   id: my_analysis
   requires:
     - my_query
