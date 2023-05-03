@@ -25,7 +25,7 @@ def main():
     data = None
 
     wandb.login()
-    run = wandb.init(project="mirror-neuron", entity=args.entity, config=config, mode='offline' if args.offline else 'online')
+    run = wandb.init(project="mirror-neuron", entity="mirror-neuron", config=config, mode='offline' if args.offline else 'online')
     
     # capture bittensor default config and use mock wallet and subtensor
     bt_config = neuron.config()
