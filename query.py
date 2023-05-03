@@ -1,5 +1,5 @@
 import wandb
-import os
+import torch
 import time
 import tqdm
 import pandas as pd
@@ -17,6 +17,7 @@ def run_train(model):
 
     for i in tqdm.tqdm(range(max_iter)):
         model.train(max_iter=1)
+        # wandb.log({"epoch": epoch, "loss": loss}, step=example_ct)
 
         if i % template.save_interval == 0:
             events = [{k: v for k, v in event.__dict__.items() if k not in ignore} for event in model.history.queue]
@@ -31,6 +32,8 @@ def run_forward(model, data):
     n_sample = len(questions)
     # split data into chunks
     chunks = [questions[i:i+template.chunk_size] for i in range(0, n_sample, template.chunk_size)]
+
+    model.train()
 
     save_path = template.save_path()
     ignore = template.ignore_attr or {}
@@ -50,6 +53,8 @@ def run_forward(model, data):
         if i * template.chunk_size % template.save_interval == 0:
             events = [{k: v for k, v in event.__dict__.items() if k not in ignore} for event in model.history.queue]
             save_results(save_path, events)
+    
+    model.eval()
 
 def run_inference(model, data):
     """Run the inference on the data
@@ -67,8 +72,6 @@ def run_query(model, data, **kwargs):
     assert len(data) > 0, 'No data to run query on'
     assert model is not None, 'No model provided'
 
-    model.config.neuron.dont_save_events = True
-
     method_name = template.method.get('name')
     if method_name == 'train':
         run_train(model)
@@ -85,6 +88,17 @@ def run_query(model, data, **kwargs):
 
     save_results(save_path, events)
     print(f'+ Saved results to {save_path!r}')
+    
+    # # Save the model in the exchangeable ONNX format
+    # torch.onnx.export(model=model, f="neuron_model.onnx")
+    # torch.onnx.export(model=model.dendrite_pool, f="dendrite_pool.onnx")    
+    # torch.onnx.export(model=model.gating_model, f="gating_model.onnx")
+    # torch.onnx.export(model=model.reward_model, f="reward_model.onnx")
+    
+    # wandb.save("model.onnx")
+    # wandb.save("dendrite_pool.onnx")
+    # wandb.save("gating_model.onnx")
+    # wandb.save("reward_model.onnx")    
 
     return pd.DataFrame(events)
 
