@@ -41,11 +41,11 @@ def load_model(bt_config=None, **kwargs):
     print(f'Template: {template}')
 
     dendrite_pool = _load_model_from_module(base.dendrite_pool, 'dendrite_pool', **kwargs)
-    wandb.watch(dendrite_pool)
+    wandb.watch(dendrite_pool, log='all')
     gating_model = _load_model_from_module(base.gating, 'gating_model', **kwargs)
-    wandb.watch(gating_model)
+    wandb.watch(gating_model, log='all')
     reward_model = _load_model_from_module(base.reward, 'reward_model', **kwargs)
-    wandb.watch(reward_model)
+    wandb.watch(reward_model, log='all')
     
     model = Neuron(
                 dendrite_pool=dendrite_pool,
