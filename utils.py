@@ -1,7 +1,7 @@
 import argparse
-import os
 import pickle
 import pandas as pd
+import torch
 
 
 def parse_args():
@@ -14,12 +14,19 @@ def parse_args():
 
 
 def save_results(path, outputs):
-
+    outputs_cpu = []
+    torch_tensor_cls = torch.tensor(1).__class__
+    for out in outputs:
+        out_cpu = {
+            k: v.to("cpu") if isinstance(v, torch_tensor_cls) else v \
+                for k,v in out.items()
+        }
+        outputs_cpu.append(out_cpu)
     if path.endswith('.pkl'):
         with open(path, 'wb') as f:
-            pickle.dump(outputs, f)
+            pickle.dump(outputs_cpu, f)
     elif path.endswith('.csv'):
-        df = pd.DataFrame(outputs)
+        df = pd.DataFrame(outputs_cpu)
         df.to_csv(path, index=False)
     else:
         raise ValueError(f'Unknown file extension for {path!r}')
