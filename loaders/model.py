@@ -30,7 +30,7 @@ def _load_model_from_module(module, model_type, metagraph=None, watch=True, **kw
             cls = getattr(module, cls_name)
             model = cls( metagraph=metagraph, ** model_args )
             if watch:
-                wandb.watch(model, log='all')
+                wandb.watch(model, log='all')#, log_freq=10, log_graph=True)
             return model
 
 
