@@ -2,7 +2,6 @@ import bittensor
 import torch
 
 from base.values import ConstantValue, RandomValue
-from base.metagraph import MetagraphMixin
 from abc import ABC, abstractmethod
 
 # expose raw RewardModel for use in other modules

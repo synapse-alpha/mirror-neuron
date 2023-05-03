@@ -28,14 +28,12 @@ def run_forward(model, data):
 
     template = QueryConfigTemplate(**wandb.config.query)
     questions, answers = data['question'], data['answer']
-    outputs = []
     n_sample = len(questions)
     # split data into chunks
     chunks = [questions[i:i+template.chunk_size] for i in range(0, n_sample, template.chunk_size)]
 
     save_path = template.save_path()
     ignore = template.ignore_attr or {}
-    # expected runtime = 0.5 * n_sample
     pbar = tqdm.tqdm(chunks, desc='Running reward model', unit='chunk')
     for i, question_chunk in enumerate(pbar):
 
