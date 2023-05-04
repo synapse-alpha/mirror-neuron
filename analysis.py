@@ -127,15 +127,21 @@ def run_sentence_embedding(df, tokenizer=None, transformer=None, embedding_layer
     # Save to disk # TODO: Set this path from config
     df_embed.to_pickle('df_embed.pkl')
 
-    df_embed = pd.read_pickle("df_embed.pkl")
     # Prepare data for UMAP
     emblst = df_embed['embedding'].tolist()
+    
+    # embeddings (n_embeddings, max_len * embedding_dim)
     embeddings = np.stack(emblst).reshape([len(emblst), -1])
-    scores = df_embed['score'].to_numpy()
+    
+    # Grab list of scores
+    scores = df_embed['score'].to_numpy()    
 
     # Encode with umap-learn
     reducer = umap.UMAP(random_state=42)
+
+    # TODO: add this as an argument
     scaled_scores = MinMaxScaler().fit_transform(scores.reshape(-1, 1))
+
     colors = plt.cm.viridis(scaled_scores)
     embedding_2d = reducer.fit_transform(embeddings)
 
@@ -145,7 +151,18 @@ def run_sentence_embedding(df, tokenizer=None, transformer=None, embedding_layer
     plt.title('UMAP Scatter Plot of Sentence Embeddings vs scores (color)')
     plt.savefig('embeddings_vs_scores_umap.png')
 
-    # TODO: (steffen) let's chat about how to incorporate this into run_plot()
+    # TODO: (steffen/pedro) let's chat about how to incorporate this into run_plot()
+    x = "embedding0"
+    y = "embedding1"
+    z = "scores"
+    df = pd.DataFrame()
+    df[x] = embedding_2d[:, 0]
+    df[y] = embedding_2d[:, 1]
+    df[z] = scores
+    table = wandb.Table(data=df[[x,y,z]], columns = [x,y,z])
+    wandb.log(
+        {f'{x}_and_{y}_vs_{z}' : wandb.plot.scatter(table, x, y,
+            title=f'{x} vs {y}')})
 
 
 def run_preprocessing(X, y, type, **kwargs):
