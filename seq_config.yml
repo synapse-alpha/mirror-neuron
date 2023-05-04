@@ -1,3 +1,5 @@
+device: cpu
+
 model:
     id: my_model
     dendrite_pool:

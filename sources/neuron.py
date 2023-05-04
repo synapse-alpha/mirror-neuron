@@ -109,7 +109,6 @@ class neuron:
         parser.add_argument( '--neuron.no_reward_model', action = 'store_true', help = 'If set, we dont load the reward model instead use just the scores.', default = False )
         parser.add_argument( '--neuron.checkpoint_url', type = str, help = 'URL to checkpoint file.', default = None )         
         parser.add_argument( '--neuron.alpha', type = float, help = 'Exponential moving average coefficient for computing weights', default = 0.01)
-        
 
     @classmethod
     def config ( cls ):

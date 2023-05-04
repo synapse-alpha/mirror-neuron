@@ -131,7 +131,7 @@ class SequentialGatingModel( BaseGatingModel ):
         # generalize this so that num_hidden can be zero/empty so that we just learn weights from embedding space to uid space
         
         # Linear layer
-        self.linear = torch.nn.Linear(self.hidden_size[-1], self.metagraph.n)
+        self.linear = torch.nn.Linear(self.hidden_size[-1], self.metagraph.n).to(self.device)
         self.optimizer = torch.optim.SGD(
             [ {"params": self.parameters()} ],
             lr = self.config.gating.learning_rate,

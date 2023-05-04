@@ -21,7 +21,7 @@ class DummyDendritePool( MetagraphMixin, torch.nn.Module ):
     """Imitates the behaviour of the miner network as defined `via bittensor._dendrite.text_prompting.dendrite_pool`, but returns random data from the dataset instead of querying the network.
     """
 
-    def __init__(self, data_path, fail_rate = 0.1, metagraph = None):
+    def __init__(self, data_path, fail_rate = 0.1, metagraph = None, **kwargs):
         super(DummyDendritePool, self).__init__()
 
         self._metagraph = metagraph
