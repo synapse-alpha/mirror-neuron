@@ -10,6 +10,7 @@ def parse_args():
     parser.add_argument('--offline', action='store_true', help='Run offline')
     parser.add_argument('--job_type', type=str, default='default', help='Job type')
     parser.add_argument('--group', type=str, default='default', help='Job group')
+    parser.add_argument('--profile', action='store_true', help='Profile the run using pyinstrument')
     return parser.parse_args()
 
 
