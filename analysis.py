@@ -53,6 +53,18 @@ def run_analysis(model=None, data=None):
                 run_plot(df, x=x, y=y)
 
 
+    if 'embeddings' in template.create_features:
+        embedding_scaler = template.embedding_plot['scaler']
+        columns = template.embedding_plot['columns']
+        x = columns[0]
+        y = columns [1]
+        z = columns[2]
+
+        embedded_df = run_sentence_embedding(df, reward_model=model.reward_model, scaler=embedding_scaler, x=x, y=y, z=z)
+
+        run_plot3d(embedded_df, x, y, z)
+
+
 def run_plot(df, x, y='score'):
 
     table = wandb.Table(data=df[[x,y]], columns = [x,y])
@@ -61,7 +73,13 @@ def run_plot(df, x, y='score'):
         {f'{x}_vs_{y}' : wandb.plot.scatter(table, x, y,
             title=f'{x} vs {y}')})
 
+# TODO: Evaluate if plot3d config is ok in order to modify run_plot function to support Z (removing run_plot3d)
+def run_plot3d(df, x, y, z):
+    table = wandb.Table(data=df[[x,y,z]], columns=[x,y,z])
 
+    wandb.log(
+        {f'{x}_and_{y}_vs_{z}' : wandb.plot.scatter(table, x, y,
+            title=f'{x} vs {y}')})
 
 
 def run_features(df, feature_names, col='message'):
@@ -84,8 +102,23 @@ def run_features(df, feature_names, col='message'):
 
     return df
 
-def run_sentence_embedding(df, tokenizer=None, transformer=None, embedding_layer=None, reward_model=None, truncation=False, max_length=550, padding="max_length", device=None,**kwargs):
+def run_sentence_embedding(
+        df,
+        tokenizer=None,
+        transformer=None,
+        embedding_layer=None,
+        reward_model=None,
+        truncation=False,
+        max_length=550,
+        padding="max_length",
+        device=None,
+        scaler=None,
+        x=None,
+        y=None,
+        z=None,
+        **kwargs):
 
+    """Adds embedding values to DF to be plotted"""
     if reward_model is not None:
         if transformer is None:
             transformer = reward_model.transformer
@@ -97,7 +130,6 @@ def run_sentence_embedding(df, tokenizer=None, transformer=None, embedding_layer
             device = reward_model.device
 
     embeddings_data = []
-    scores = df.scores.apply(lambda x: x[0])
     pbar = tqdm.tqdm(df.message.values, unit='messages', desc='Embedding messages')
     for i, question in enumerate(pbar):
 
@@ -114,7 +146,7 @@ def run_sentence_embedding(df, tokenizer=None, transformer=None, embedding_layer
 
         embeddings_data.append({
             'question': question,
-            'score': scores[i].item(),
+            'score': df.scores[i].item(),
             'embedding': token_embeddings[0].cpu().numpy(),
             'sentence_embedding': token_embeddings[0].mean(dim=0).cpu().numpy(),
             'input_ids': encodings_dict['input_ids'].cpu().numpy(),
@@ -122,7 +154,6 @@ def run_sentence_embedding(df, tokenizer=None, transformer=None, embedding_layer
         })
 
     df_embed = pd.DataFrame(embeddings_data)
-    df_embed.head()
 
     # Save to disk # TODO: Set this path from config
     df_embed.to_pickle('df_embed.pkl')
@@ -139,8 +170,12 @@ def run_sentence_embedding(df, tokenizer=None, transformer=None, embedding_layer
     # Encode with umap-learn
     reducer = umap.UMAP(random_state=42)
 
-    # TODO: add this as an argument
-    scaled_scores = MinMaxScaler().fit_transform(scores.reshape(-1, 1))
+    if scaler == 'MinMax':
+        scaler = MinMaxScaler()
+    else:
+        raise "Scaler function not defined"
+
+    scaled_scores = scaler.fit_transform(scores.reshape(-1, 1))
 
     colors = plt.cm.viridis(scaled_scores)
     embedding_2d = reducer.fit_transform(embeddings)
@@ -152,17 +187,12 @@ def run_sentence_embedding(df, tokenizer=None, transformer=None, embedding_layer
     plt.savefig('embeddings_vs_scores_umap.png')
 
     # TODO: (steffen/pedro) let's chat about how to incorporate this into run_plot()
-    x = "embedding0"
-    y = "embedding1"
-    z = "scores"
     df = pd.DataFrame()
     df[x] = embedding_2d[:, 0]
     df[y] = embedding_2d[:, 1]
     df[z] = scores
-    table = wandb.Table(data=df[[x,y,z]], columns = [x,y,z])
-    wandb.log(
-        {f'{x}_and_{y}_vs_{z}' : wandb.plot.scatter(table, x, y,
-            title=f'{x} vs {y}')})
+
+    return df
 
 
 def run_preprocessing(X, y, type, **kwargs):

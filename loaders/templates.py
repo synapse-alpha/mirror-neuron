@@ -64,3 +64,4 @@ class AnalysisConfigTemplate(BaseConfigTemplate):
   estimators: dict = None
   predict: dict = None
   plot: dict = None
+  embedding_plot: dict = None

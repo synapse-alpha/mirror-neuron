@@ -22,6 +22,7 @@ def _load_model_from_module(module, model_type, bt_config, metagraph=None, watch
     model_name = config.get('name', None)
     model_args = config.get('args', {})
     # NOTE: Ensure that all models get same device. (Does not carry over from neuron init)
+    # TODO: Adjust in a way to not break other models (e.g. RandomGatingModel broke because it wasn't receiving the config param)
     model_args['config'] = bt_config 
     print(f'\nLooking for {model_name!r} model of type {model_type!r}')
 
