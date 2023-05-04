@@ -12,7 +12,7 @@ from sources.reward import RewardModel
 
 class BaseRewardModel( torch.nn.Module, ABC ):
 
-    def __init__(self, metagraph):
+    def __init__(self, metagraph, **kwargs):
         super(BaseRewardModel, self).__init__()
         self._metagraph = metagraph
     
@@ -31,7 +31,7 @@ class BaseRewardModel( torch.nn.Module, ABC ):
 
 class DummyRewardModel( BaseRewardModel ):
     
-    def __init__(self, reward_type='question_length', forward_value=ConstantValue(value=1), backward_value=ConstantValue(value=1), metagraph=None):
+    def __init__(self, reward_type='question_length', forward_value=ConstantValue(value=1), backward_value=ConstantValue(value=1), metagraph=None, **kwargs):
         super(DummyRewardModel, self).__init__( metagraph=metagraph )
         self.reward_type = reward_type
         self.forward_value = forward_value
@@ -60,7 +60,7 @@ class DummyRewardModel( BaseRewardModel ):
 
 class ConstantRewardModel( BaseRewardModel ):
     
-    def __init__(self, forward_value=1, backward_value=0, metagraph=None):
+    def __init__(self, forward_value=1, backward_value=0, metagraph=None, **kwargs):
         super(ConstantRewardModel, self).__init__( metagraph=metagraph )
         self.forward_value = ConstantValue(value=forward_value)
         self.backward_value = ConstantValue(value=backward_value)

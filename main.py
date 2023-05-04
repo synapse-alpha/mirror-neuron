@@ -51,7 +51,7 @@ def main():
     # bt_config.subtensor._mock = True
     bt_config.wallet._mock = True
     bt_config.neuron.dont_save_events = True
-    bt_config.neuron.device = 'cpu'
+    bt_config.neuron.device = config.get("device", "cpu") # ensure these are synchronized from main config.yml
     # remove unwanted extra config fields
     for k in ['model', 'data', 'query', 'analysis']:
         if hasattr(bt_config, k):

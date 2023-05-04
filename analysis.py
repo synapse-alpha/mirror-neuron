@@ -1,15 +1,18 @@
 import os
 import tqdm
+import umap
 import torch
 import wandb
 import numpy as np
 import pandas as pd
-from utils import load_results
+import plotly.express as px
+import matplotlib.pyplot as plt
+from pandas.api.types import is_list_like
+from sklearn.preprocessing import MinMaxScaler
 
+from utils import load_results
 from loaders.templates import AnalysisConfigTemplate, QueryConfigTemplate
 
-from pandas.api.types import is_list_like
-import plotly.express as px
 
 def sanitize(df):
 
@@ -120,13 +123,13 @@ def run_sentence_embedding(df, tokenizer=None, transformer=None, embedding_layer
         if tokenizer is None:
             tokenizer = reward_model.tokenizer
         if embedding_layer is None:
-            embedding_layer = reward_model.transformer.get_input_embeddings()
+            embedding_layer = reward_model.transformer.get_input_embeddings().to(device)
         if device is None:
             device = reward_model.device
 
-    embeddings = []
-    scores = df.response.values
-    pbar = tqdm.tqdm(df.questions.values, unit='questions', desc='Embedding questions')
+    embeddings_data = []
+    scores = df.scores.apply(lambda x: x[0])
+    pbar = tqdm.tqdm(df.message.values, unit='messages', desc='Embedding messages')
     for i, question in enumerate(pbar):
 
         encodings_dict = tokenizer(
@@ -140,17 +143,40 @@ def run_sentence_embedding(df, tokenizer=None, transformer=None, embedding_layer
         with torch.no_grad():
             token_embeddings = embedding_layer(encodings_dict["input_ids"].to( device ))
 
-        embeddings.append({
+        embeddings_data.append({
             'question': question,
             'score': scores[i].item(),
             'embedding': token_embeddings[0].cpu().numpy(),
             'sentence_embedding': token_embeddings[0].mean(dim=0).cpu().numpy(),
             'input_ids': encodings_dict['input_ids'].cpu().numpy(),
             'attention_mask': encodings_dict['attention_mask'].cpu().numpy(),
-            })
+        })
 
-    df_embed = pd.DataFrame(embeddings)
+    df_embed = pd.DataFrame(embeddings_data)
     df_embed.head()
+
+    # Save to disk # TODO: Set this path from config
+    df_embed.to_pickle('df_embed.pkl')
+
+    df_embed = pd.read_pickle("df_embed.pkl")
+    # Prepare data for UMAP
+    emblst = df_embed['embedding'].tolist()
+    embeddings = np.stack(emblst).reshape([len(emblst), -1])
+    scores = df_embed['score'].to_numpy()
+
+    # Encode with umap-learn
+    reducer = umap.UMAP(random_state=42)
+    scaled_scores = MinMaxScaler().fit_transform(scores.reshape(-1, 1))
+    colors = plt.cm.viridis(scaled_scores)
+    embedding_2d = reducer.fit_transform(embeddings)
+
+    # Compute and save the scatter plot
+    plt.scatter(embedding_2d[:, 0], embedding_2d[:, 1], c=colors, s=10)
+    plt.colorbar(label='Model Score')
+    plt.title('UMAP Scatter Plot of Sentence Embeddings vs scores (color)')
+    plt.savefig('embeddings_vs_scores_umap.png')
+
+    # TODO: (steffen) let's chat about how to incorporate this into run_plot()
 
 
 def run_preprocessing(X, y, type, **kwargs):
