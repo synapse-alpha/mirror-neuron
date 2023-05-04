@@ -6,18 +6,30 @@ import pandas as pd
 from utils import save_results
 from loaders.templates import QueryConfigTemplate
 
+def add_call_metrics(queue, t0, step, added_size=1):
+
+    for i in range(added_size):
+        event = queue[-i-1]
+        event.call_time = time.time()-t0
+        event.step = step
+        event.step_sub = i
+
+
 def run_train(model):
     """Run the training loop for a user-specified number of epochs
     """
     config = wandb.config.query
     template = QueryConfigTemplate(**config)
     save_path = template.save_path()
-    ignore = template.ignore_attr or {}    
+    ignore = template.ignore_attr or {}
     max_iter = template.method.get('args', {}).get('max_iter',1)
 
     for i in tqdm.tqdm(range(max_iter)):
+        t0 = time.time()
+        qsize = model.history.qsize()
         model.train(max_iter=1)
-        # wandb.log({"epoch": epoch, "loss": loss}, step=example_ct)
+        # add step time and step number to the added queue items
+        add_call_metrics(model.history.queue, t0, i, added_size=model.history.qsize()-qsize)
 
         if i % template.save_interval == 0:
             events = [{k: v for k, v in event.__dict__.items() if k not in ignore} for event in model.history.queue]
@@ -40,6 +52,9 @@ def run_forward(model, data):
     pbar = tqdm.tqdm(chunks, desc='Running reward model', unit='chunk')
     for i, question_chunk in enumerate(pbar):
 
+        t0 = time.time()
+        qsize = model.history.qsize()
+
         # run reward model: this is the main part of the code and should be more configurable
         model.forward(
             roles = ['system', 'user'],
@@ -49,16 +64,19 @@ def run_forward(model, data):
             train_gating_model = True,
             timeout = model.config.neuron.training_timeout
         )
+        # add step time and step number to the added queue items
+        add_call_metrics(model.history.queue, t0, i, added_size=model.history.qsize()-qsize)
 
         if i * template.chunk_size % template.save_interval == 0:
             events = [{k: v for k, v in event.__dict__.items() if k not in ignore} for event in model.history.queue]
             save_results(save_path, events)
-    
+
     model.eval()
 
 def run_inference(model, data):
     """Run the inference on the data
     """
+    raise NotImplementedError('Inference not implemented yet')
     pass
 
 def run_query(model, data, **kwargs):
@@ -88,17 +106,6 @@ def run_query(model, data, **kwargs):
 
     save_results(save_path, events)
     print(f'+ Saved results to {save_path!r}')
-    
-    # # Save the model in the exchangeable ONNX format
-    # torch.onnx.export(model=model, f="neuron_model.onnx")
-    # torch.onnx.export(model=model.dendrite_pool, f="dendrite_pool.onnx")    
-    # torch.onnx.export(model=model.gating_model, f="gating_model.onnx")
-    # torch.onnx.export(model=model.reward_model, f="reward_model.onnx")
-    
-    # wandb.save("model.onnx")
-    # wandb.save("dendrite_pool.onnx")
-    # wandb.save("gating_model.onnx")
-    # wandb.save("reward_model.onnx")    
 
     return pd.DataFrame(events)
 
