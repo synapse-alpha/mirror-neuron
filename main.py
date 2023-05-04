@@ -45,8 +45,7 @@ def main():
     subtensor = bittensor.subtensor ( config = bt_config )
     metagraph = bittensor.metagraph( netuid = bt_config.netuid, network = subtensor.network )
 
-
-    run.log({"bt_config": bt_config})
+    run.config.update({"bt_config": bt_config})
     
     profiler = None
     if args.profile:
@@ -58,28 +57,24 @@ def main():
     if config.get('model'):
         print(f'{"- "*40}\nLoading model:')
         model = load_model(bt_config=bt_config, metagraph=metagraph, subtensor=subtensor)
-        run.log({"model_loaded": True})
         print("\n>>> Model loaded successfully\n")
 
     # Load the data
     if config.get('data'):
         print(f'{"- "*40}\nLoading query data:')
         data = load_data()
-        run.log({"data_loaded": True})
         print("\n>>> Data loaded successfully\n")
 
     # Run the queries
     if config.get('query'):
         print(f'{"- "*40}\nRunning queries:')
         run_query(model=model, data=data)
-        run.log({"queries_executed": True})
         print("\n>>> Queries executed successfully\n")
 
     # Run the analysis
     if config.get('analysis'):
         print(f'{"- "*40}\nRunning analysis:')
         run_analysis(model=model, data=data)
-        run.log({"analysis_executed": True})
         print("\n>>> Analysis executed successfully\n")
 
     if profiler:
