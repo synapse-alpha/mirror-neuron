@@ -84,6 +84,11 @@ Start with the dummy configuration to ensure everything works smoothly.
 python3 main --config dummy_config.yml
 ```
 
+Also the code performance can be profiled using `pyinstrument` by passing an additional command line argument
+```bash
+python3 main --config dummy_config.yml --profile
+```
+
 ## Config File
 
 An experiment consists of several steps which are all defined in the **config file**. An experiment may be run on a single step or a subset of steps.
