@@ -1,4 +1,5 @@
 import wandb
+import os
 
 import base.gating
 import base.reward
@@ -45,7 +46,9 @@ def load_model(bt_config=None, **kwargs):
     template = ModelConfigTemplate(**wandb.config.model)
     print(f'Template: {template}')
 
-    run_watch_experiment()
+    run_watch_experiment(name='alice') # only this one produces a graph
+    run_watch_experiment(name='bob')
+    
 
     watch = True
     dendrite_pool = _load_model_from_module(base.dendrite_pool, model_type='dendrite_pool', watch=watch, **kwargs)
@@ -64,7 +67,7 @@ def load_model(bt_config=None, **kwargs):
 
     return model
 
-def run_watch_experiment():
+def run_watch_experiment(name):
 
     import torch
     import torch.nn as nn
@@ -107,7 +110,12 @@ def run_watch_experiment():
         example_ct +=  len(x)
         # Print the loss every 10 epochs
         if epoch % 10 == 0:
-            wandb.log({"epoch": epoch, "loss": loss}, step=example_ct)
-            print(f'Epoch {epoch}, Loss: {loss.item():.4f}')
+            wandb.log({f"{name}.epoch": epoch, f"{name}.loss": loss}, step=example_ct)
+            print(f'{name} training, Epoch {epoch}, Loss: {loss.item():.4f}')
 
 
+    # Save the model in the exchangeable ONNX format
+    # os.makedirs('./models', exist_ok=True)
+    model_path = f'model_{name}.onnx'
+    torch.onnx.export(model, x, model_path)
+    wandb.save(model_path)
