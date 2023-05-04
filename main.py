@@ -1,5 +1,7 @@
+import os
 import wandb
 import bittensor
+import pyinstrument
 from sources.neuron import neuron
 from loaders.model import load_model
 from loaders.data import load_data
@@ -45,7 +47,13 @@ def main():
 
 
     run.log({"bt_config": bt_config})
-
+    
+    profiler = None
+    if args.profile:
+        profiler = pyinstrument.Profiler()
+        print(f'{"*"*40}\nProfiling run using pyinstrument\n{"*"*40}')
+        profiler.start()
+        
     # Load the model
     if config.get('model'):
         print(f'{"- "*40}\nLoading model:')
@@ -73,6 +81,15 @@ def main():
         run_analysis(model=model, data=data)
         run.log({"analysis_executed": True})
         print("\n>>> Analysis executed successfully\n")
+
+    if profiler:
+        profiler.stop()
+        profile_report = profiler.output_html(timeline=True)
+        path = f'./profiles/{run.name}.html'
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, 'w') as f:
+            f.write(profile_report)
+        wandb.log({"pyinstrument": wandb.Html(profile_report)})
 
     # run.log_code()
 
