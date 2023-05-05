@@ -65,7 +65,7 @@ def run_analysis(model=None, data=None):
                     title='Rewards')
 
     run_plot(df, x='step', y='call_time', title='Call time', type='line')
-    run_features(df, template.create_features)
+    run_features(df=df, feature_names=template.create_features, model=model)
 
     if template.plot is not None:
         for y, x_list in template.plot.items():
@@ -113,7 +113,7 @@ def run_plot3d(df, x, y, z):
             title=f'{x} vs {y}')})
 
 
-def run_features(df, feature_names, col='message'):
+def run_features(df, feature_names, model=None, col='message'):
 
     # make some high level features which describe salient properties of questions such as number of words, length of question, etc.
     if 'question_length' in feature_names:
@@ -130,6 +130,9 @@ def run_features(df, feature_names, col='message'):
 
     if 'first_word' in feature_names:
         df['first_word'] = df[col].str.split().apply(lambda x: x[0])
+
+    if 'reward_num_tokens' in feature_names:
+        df['reward_num_tokens'] = df[col].apply(lambda x: len(model.reward_model.tokenizer.encode(x)))
 
     return df
 
