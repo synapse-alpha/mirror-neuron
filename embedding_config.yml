@@ -1,0 +1,68 @@
+model:
+    id: my_model
+    dendrite_pool:
+      name: DummyDendritePool
+      args:
+        fail_rate: 0.1
+        data_path: nq_open
+    gating_model:
+      name: RandomGatingModel
+      args:
+        frozen: True
+        seed: 0
+        distribution: uniform
+    reward_model:
+      name: CustomRewardModel
+      args:
+        model_path: EleutherAI/gpt-j-6b
+        device: cpu
+    alpha: 0.01
+
+data:
+    id: my_data
+    path: nq_open
+    schema:
+      train:
+        - row:
+          question: question
+          answer: answer
+    sample:
+      method: first
+      n: 100
+
+query:
+    id: my_query
+    chunk_size: 1
+    method:
+      # name: forward
+      name: train
+      args:
+        max_iter: 10
+    ignore_attr:
+      - hotkeys
+      - block
+
+analysis:
+    id: my_analysis
+    requires:
+      - my_query
+    create_features:
+      - question_length
+      - num_words
+      - avg_word_length
+      - embeddings
+    plot:
+      rewards:
+        - question_length
+        - num_words
+        - avg_word_length
+      scores:
+        - question_length
+        - num_words
+        - avg_word_length
+    embedding_plot:
+      scaler: MinMax
+      columns:
+        - embedding_x
+        - embedding_y
+        - scores

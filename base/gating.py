@@ -45,7 +45,7 @@ class LongestMessageGatingModel( BaseGatingModel ):
 
 class RandomGatingModel( BaseGatingModel ):
 
-    def __init__(self, frozen=False, seed=0, distribution='uniform', p0=1, p1=0, metagraph=None):
+    def __init__(self, frozen=False, seed=0, distribution='uniform', p0=1, p1=0, metagraph=None, config: 'bittensor.config' = None):
         super(RandomGatingModel, self).__init__( metagraph=metagraph )
 
         value_type = FrozenRandomValue if frozen else RandomValue
