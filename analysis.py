@@ -14,17 +14,24 @@ from utils import load_results
 from loaders.templates import AnalysisConfigTemplate, QueryConfigTemplate
 
 
-def _tabularize_df_hack(df):
+def sanitize(df):
+
+    # detect list-like columns and convert to numpy arrays on cpu
+    list_cols = [c for c, ser in df.items() if ser.apply(lambda x: is_list_like(x)).any()]
+    for c in list_cols:
+        if isinstance(df.loc[0,c], torch.Tensor):
+            df[c] = df[c].apply(lambda x: x.detach().numpy())
+        print(f'Column {c!r} is list-like with lengths {set(df[c].apply(len))}')
+        df[c] = df[c].apply(lambda x: np.array(x).flatten())
+
+def _tabularize_hack(df):
     """Convert list-like columns to tabular format
     """
     # detect list-like columns
     list_cols = [c for c, ser in df.items() if ser.apply(lambda x: is_list_like(x)).any()]
     for c in list_cols:
-        if isinstance(df.loc[0,c], torch.Tensor):
-            df[c] = df[c].apply(lambda x: x.detach().numpy())
-            
         # here we just grab first index of the list (TEMPORARY HACK)
-        df[c] = df[c].apply(lambda x: np.array(x).flatten()[0])
+        df[c] = df[c].apply(lambda x: x[0])
 
 
 def run_analysis(model=None, data=None):
@@ -32,19 +39,32 @@ def run_analysis(model=None, data=None):
     template = AnalysisConfigTemplate(**wandb.config.analysis)
     print(f'Template: {template}')
 
+    # load the results from the query
     load_path = QueryConfigTemplate(**wandb.config.query).save_path()
-
     df = load_results(load_path)
 
-    # we want to unwrap the dataframe but we need to know which columns have lists and also how long the lists are
-    # df = unwrap_df(df)
-    print(df)
-    print(df.iloc[0])
-        
-    _tabularize_df_hack(df) # just take first element of everything list like
     print(df)
     print(df.iloc[0])
 
+    sanitize(df)
+    # save dataframe to wandb as a table (this doesn't work because of the list-like columns)
+    # wandb.log({'history': wandb.Table(dataframe=df)})
+
+    _tabularize_hack(df) # just take first element of everything list like
+
+    # save dataframe to wandb as a table
+    wandb.log({'history_tabular': wandb.Table(dataframe=df)})
+
+    print(df)
+    print(df.iloc[0])
+
+    rewards_table = df.set_index(['step','step_sub'])['rewards'].apply(pd.Series)
+    rewards_table.columns = [f'reward_{i}' for i in range(rewards_table.shape[1])]
+    run_line_series(xs=[df.step.values for _ in rewards_table.columns],
+                    ys=[rewards_table[c].values for c in rewards_table.columns], keys=rewards_table.columns,
+                    title='Rewards')
+
+    run_plot(df, x='step', y='call_time', title='Call time', type='line')
     run_features(df, template.create_features)
 
     if template.plot is not None:
@@ -65,18 +85,29 @@ def run_analysis(model=None, data=None):
         run_plot3d(embedded_df, x, y, z)
 
 
-def run_plot(df, x, y='score'):
-
+def run_plot(df, x, y, type='scatter', title=None, **kwargs):
     table = wandb.Table(data=df[[x,y]], columns = [x,y])
 
+    plot_func = getattr(wandb.plot, type, None)
+    if plot_func is None:
+        raise ValueError(f'Unknown plot type {type!r}')
+
+    if title is None:
+        title = f'{x} vs {y}'
+
     wandb.log(
-        {f'{x}_vs_{y}' : wandb.plot.scatter(table, x, y,
-            title=f'{x} vs {y}')})
+        {title : plot_func(table, x, y,
+            title=title, **kwargs)})
+
+def run_line_series(xs, ys, keys, title):
+    wandb.log(
+        {title : wandb.plot.line_series(xs=xs, ys=ys, keys=keys,
+            title=title)})
+
 
 # TODO: Evaluate if plot3d config is ok in order to modify run_plot function to support Z (removing run_plot3d)
 def run_plot3d(df, x, y, z):
     table = wandb.Table(data=df[[x,y,z]], columns=[x,y,z])
-
     wandb.log(
         {f'{x}_and_{y}_vs_{z}' : wandb.plot.scatter(table, x, y,
             title=f'{x} vs {y}')})
@@ -160,12 +191,12 @@ def run_sentence_embedding(
 
     # Prepare data for UMAP
     emblst = df_embed['embedding'].tolist()
-    
+
     # embeddings (n_embeddings, max_len * embedding_dim)
     embeddings = np.stack(emblst).reshape([len(emblst), -1])
-    
+
     # Grab list of scores
-    scores = df_embed['score'].to_numpy()    
+    scores = df_embed['score'].to_numpy()
 
     # Encode with umap-learn
     reducer = umap.UMAP(random_state=42)

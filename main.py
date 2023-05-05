@@ -23,8 +23,18 @@ def main():
     # Load the config file
     config = load_config(args.config)
 
+    tags = [k for k in ['model', 'data', 'query', 'analysis'] if config.get(k)]
+
+    profiler = None
     model = None
-    data = None
+    data = None    
+    
+    if args.profile:
+        profiler = pyinstrument.Profiler()
+        print(f'{"*"*40}\nProfiling run using pyinstrument\n{"*"*40}')
+        profiler.start()
+        tags += ['profiler']
+
     wandb.login()
     run = wandb.init(
         project="mirror-neuron",
@@ -33,7 +43,7 @@ def main():
         mode='offline' if args.offline else 'online',
         job_type=args.job_type,
         group=args.group,
-        tags=[k for k in ['model', 'data', 'query', 'analysis'] if config.get(k)]
+        tags=tags
     )
 
     # capture bittensor default config and use mock wallet and subtensor
@@ -42,17 +52,15 @@ def main():
     bt_config.wallet._mock = True
     bt_config.neuron.dont_save_events = True
     bt_config.neuron.device = config.get("device", "cpu") # ensure these are synchronized from main config.yml
+    # remove unwanted extra config fields
+    for k in ['model', 'data', 'query', 'analysis']:
+        if hasattr(bt_config, k):
+            delattr(bt_config, k)
+    run.config.update({"bittensor.config": bt_config})
+
     subtensor = bittensor.subtensor ( config = bt_config )
     metagraph = bittensor.metagraph( netuid = bt_config.netuid, network = subtensor.network )
 
-    run.config.update({"bt_config": bt_config})
-    
-    profiler = None
-    if args.profile:
-        profiler = pyinstrument.Profiler()
-        print(f'{"*"*40}\nProfiling run using pyinstrument\n{"*"*40}')
-        profiler.start()
-        
     # Load the model
     if config.get('model'):
         print(f'{"- "*40}\nLoading model:')
@@ -86,7 +94,6 @@ def main():
             f.write(profile_report)
         wandb.log({"pyinstrument": wandb.Html(profile_report)})
 
-    # run.log_code()
 
 if __name__ == "__main__":
     main()
