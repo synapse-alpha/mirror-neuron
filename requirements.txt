@@ -6,4 +6,5 @@ statsmodels
 wandb
 pyinstrument
 umap-learn
+umap
 matplotlib
