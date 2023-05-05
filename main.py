@@ -58,13 +58,10 @@ def main():
             delattr(bt_config, k)
     run.config.update({"bittensor.config": bt_config})
 
-    subtensor = bittensor.subtensor ( config = bt_config )
-    metagraph = bittensor.metagraph( netuid = bt_config.netuid, network = subtensor.network )
-
     # Load the model
     if config.get('model'):
         print(f'{"- "*40}\nLoading model:')
-        model = load_model(bt_config=bt_config, metagraph=metagraph, subtensor=subtensor)
+        model = load_model(bt_config=bt_config)
         print("\n>>> Model loaded successfully\n")
 
     # Load the data

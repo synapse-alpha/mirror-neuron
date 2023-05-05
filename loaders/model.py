@@ -1,11 +1,13 @@
 import wandb
-import os
 
 import base.gating
 import base.reward
 import base.neuron
+import base.metagraph
+import base.subtensor
 from base.neuron import Neuron
 from loaders.templates import ModelConfigTemplate
+from inspect import signature
 
 def _load_model_from_module(module, model_type, bt_config, metagraph=None, watch=True, **kwargs):
     """
@@ -23,15 +25,18 @@ def _load_model_from_module(module, model_type, bt_config, metagraph=None, watch
     model_name = config.get('name', None)
     model_args = config.get('args', {})
     # NOTE: Ensure that all models get same device. (Does not carry over from neuron init)
-    model_args['config'] = bt_config 
+    cls_kwargs = {'config': bt_config, 'metagraph': metagraph, **model_args}
     print(f'\nLooking for {model_name!r} model of type {model_type!r}')
 
     for cls_name in choices:
 
         if cls_name == model_name:
-            print(f'+ Found {cls_name!r} in {model_type!r}. Creating instance with args: {model_args}')
+
             cls = getattr(module, cls_name)
-            model = cls( metagraph=metagraph, ** model_args )
+            # get the signature of the class constructor
+            valid_kwargs = {k: v for k, v in cls_kwargs.items() if k in signature(cls).parameters} 
+            print(f'+ Found {cls_name!r} in {model_type!r}. Creating instance with args: {valid_kwargs}')            
+            model = cls( ** valid_kwargs )
             if watch:
                 wandb.watch(model, log='all')#, log_freq=10, log_graph=True)
             return model
@@ -51,16 +56,19 @@ def load_model(bt_config=None, **kwargs):
     run_watch_experiment(name='alice') # only this one produces a graph
     run_watch_experiment(name='bob')
     
-
     watch = True
+    subtensor = _load_model_from_module(base.subtensor, model_type='subtensor', watch=False, bt_config=bt_config, **kwargs)
+    metagraph = _load_model_from_module(base.metagraph, model_type='metagraph', watch=False, bt_config=bt_config, **kwargs)
     # NOTE: Do we want to hardcode the base module in here?  What if we want sources.gating, etc?
-    dendrite_pool = _load_model_from_module(base.dendrite_pool, model_type='dendrite_pool', watch=watch, bt_config=bt_config, **kwargs)
-    gating_model = _load_model_from_module(base.gating, model_type='gating_model', watch=watch, bt_config=bt_config,  **kwargs)
-    reward_model = _load_model_from_module(base.reward, model_type='reward_model', watch=watch, bt_config=bt_config,  **kwargs)
+    dendrite_pool = _load_model_from_module(base.dendrite_pool, model_type='dendrite_pool', watch=watch, bt_config=bt_config, metagraph=metagraph, **kwargs)
+    gating_model = _load_model_from_module(base.gating, model_type='gating_model', watch=watch, bt_config=bt_config, metagraph=metagraph, **kwargs)
+    reward_model = _load_model_from_module(base.reward, model_type='reward_model', watch=watch, bt_config=bt_config, metagraph=metagraph, **kwargs)
     model = Neuron(
                 dendrite_pool=dendrite_pool,
                 gating_model=gating_model,
                 reward_model=reward_model,
+                subtensor=subtensor,
+                metagraph=metagraph,
                 config=bt_config,
                 **kwargs
             )

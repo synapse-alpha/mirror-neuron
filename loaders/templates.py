@@ -34,6 +34,8 @@ class ModelConfigTemplate(BaseConfigTemplate):
     gating_model: BaseModelConfigTemplate = None
     reward_model: BaseModelConfigTemplate = None
     alpha: float = 0.01
+    subtensor: dict = None
+    metagraph: dict = None
     
 
 
