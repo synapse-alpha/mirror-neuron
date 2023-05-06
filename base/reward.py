@@ -7,6 +7,8 @@ from abc import ABC, abstractmethod
 # expose raw RewardModel for use in other modules
 from sources.reward import RewardModel
 
+from transformers import AutoTokenizer
+
 # include query failure as an additional behavior
 # TODO: inherit from RewardModel and just override init
 
@@ -15,6 +17,8 @@ class BaseRewardModel( torch.nn.Module, ABC ):
     def __init__(self, metagraph, **kwargs):
         super(BaseRewardModel, self).__init__()
         self._metagraph = metagraph
+        #TODO: Hardcoded base tokenizer to facilitate code development. Make it dynamic to config in the future
+        self.tokenizer = AutoTokenizer.from_pretrained('EleutherAI/gpt-j-6b')
     
     @abstractmethod
     def forward(self, x):
