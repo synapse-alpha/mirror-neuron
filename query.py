@@ -28,6 +28,11 @@ def run_train(model):
         t0 = time.time()
         qsize = model.history.qsize()
         model.train(max_iter=1)
+        # most recent backward pass populates self.optimizer.loss
+        # wandb.log({'gating_train_loss': model.gating_model.optimizer.loss.item()})
+        # # most recent backward pass populates self.optimizer.loss
+        # wandb.log({'reward_train_loss': model.reward_model.optimizer.loss.item()})
+
         # add step time and step number to the added queue items
         add_call_metrics(model.history.queue, t0, i, added_size=model.history.qsize()-qsize)
 
