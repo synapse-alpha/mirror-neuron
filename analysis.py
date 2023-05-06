@@ -43,10 +43,18 @@ def run_analysis(model=None, data=None):
     load_path = QueryConfigTemplate(**wandb.config.query).save_path()
     df = load_results(load_path)
 
+    if model is not None:
+        num_uids = model.metagraph.n
+    else: # infer from the data
+        num_uids = df.uids.apply(max).max()
+
     print(df)
     print(df.iloc[0])
 
     sanitize(df)
+
+    run_plot_heatmap(df, uid_field='uids', value_field='rewards', num_uids=num_uids)
+    run_plot_heatmap(df, uid_field=None, value_field='scores', num_uids=num_uids)
     # save dataframe to wandb as a table (this doesn't work because of the list-like columns)
     # wandb.log({'history': wandb.Table(dataframe=df)})
 
@@ -83,6 +91,66 @@ def run_analysis(model=None, data=None):
         embedded_df = run_sentence_embedding(df, reward_model=model.reward_model, scaler=embedding_scaler, x=x, y=y, z=z)
 
         run_plot3d(embedded_df, x, y, z)
+
+
+def run_plot_heatmap(df, uid_field, value_field, num_uids):
+
+    arrs = []
+    for i in range(df.shape[0]):
+        # make an empty array full of nans
+        arr = np.full(num_uids, np.nan)
+        # TODO: in train mode we have 2 forward passes per step, so we want to make a separate panel for each :)
+        row = df.iloc[i]
+
+        uids = row[uid_field] if uid_field is not None else range(num_uids)
+        # print(f'Row {i}: Setting {len(uids)} indices {uids} to {len(row[value_field])} values: {row[value_field]}')
+        arr[uids] = row[value_field]
+        arrs.append(arr)
+        # wandb.log({value_field: wandb.Histogram(arr)}, step=row.step)
+        # print(f'Logged {value_field} at step {row.step}: {arr}')
+
+    df_uids = pd.DataFrame(arrs).T
+    fig = px.imshow(df_uids.ewm(alpha=0.1, axis=1).mean(),
+              title=f'{value_field.title()} for Network (EWM Smoothed)',
+              color_continuous_scale='Blues', aspect='auto',
+              width=800, height=600, template='plotly_white').\
+        update_xaxes(title='Iteration').\
+        update_yaxes(title='UID').\
+        update_layout(font_size=14)
+    wandb.log({f'uid_vs_{value_field}': wandb.Html(fig.to_html())})
+
+    avg_values = df_uids.mean(axis=1)
+    fig = px.bar(x=avg_values.index, y=avg_values.values, color=avg_values.values,
+                 error_y=df_uids.std(axis=1).values,
+                 color_continuous_scale='Blues',
+                title=f'Average {value_field.title()} by UID',
+                 labels={'x': 'UID', 'y': f'Average {value_field.title()}','color':''},
+                 width=800, height=600, template='plotly_white',
+    ).update_layout(font_size=14,coloraxis_showscale=False)
+    # change error bar color to grey
+    fig.data[0].error_y.color = 'grey'
+
+    wandb.log({f'average_uid_{value_field}': wandb.Html(fig.to_html())})
+
+    fig = px.histogram(x=avg_values,
+                title=f'Average {value_field.title()}, all UIDs',
+                 labels={'x': f'Average {value_field.title()}','color':''},
+                 width=800, height=600, template='plotly_white',
+    ).update_layout(font_size=14,coloraxis_showscale=False)
+
+    wandb.log({f'average_{value_field}': wandb.Html(fig.to_html())})
+
+    # add quantiles and draw a stacked histogram for each
+    steps = df_uids.columns.astype(float)
+    n_bins = 5
+    labels = [f'{i} - {i+100//n_bins}%' for i in range(0, 100, 100//n_bins)]
+    cats = pd.cut(steps,bins=n_bins,labels=labels)
+    fig = px.histogram(df_uids.groupby(cats, axis=1).mean(), opacity=0.8,
+                labels={'value': f'Average {value_field.title()}','variable':'Step Quantile'},
+                title=f'Average {value_field.title()}, all UIDs, by Quantile',
+                 width=800, height=600, template='plotly_white',
+                 color_discrete_sequence=px.colors.sequential.deep_r)
+    wandb.log({f'average_slices_{value_field}': wandb.Html(fig.to_html())})
 
 
 def run_plot(df, x, y, type='scatter', title=None, **kwargs):
