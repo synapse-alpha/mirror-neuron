@@ -315,7 +315,7 @@ class neuron:
             scores = scores,
             all_uids = topk_uids,
             all_completions = successful_completions,
-            hotkeys = copy.deepcopy( self.metagraph.hotkeys ),
+            hotkeys = copy.deepcopy( self.metagraph.hotkeys ), # should only be for topk uids
             block = self.metagraph.block,
             is_question = message == self.config.neuron.question_prompt,
         )

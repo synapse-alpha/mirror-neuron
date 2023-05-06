@@ -19,6 +19,8 @@ import torch
 import argparse
 import bittensor
 from transformers import AutoModel, AutoTokenizer, AutoConfig 
+from types import SimpleNamespace
+import queue
 
 class GatingModel( torch.nn.Module ):
     """
@@ -88,6 +90,7 @@ class GatingModel( torch.nn.Module ):
             lr = self.config.gating.learning_rate,
             momentum = self.config.gating.momentum,
         )
+        self.history = queue.Queue()
 
     def backward( self, scores: torch.FloatTensor, rewards: torch.FloatTensor ): 
         """ Runs a backward pass through the model.
@@ -101,6 +104,7 @@ class GatingModel( torch.nn.Module ):
         nomralized_rewards = torch.nn.functional.softmax( rewards, dim=0 ).to( self.device )
         loss = torch.nn.functional.mse_loss( normalized_scores, nomralized_rewards.detach() )
         loss.backward()
+        self.history.put( SimpleNamespace(loss=loss.item()) )
         self.optimizer.step()
 
     def forward( self, message: str ) -> 'torch.FloatTensor':
