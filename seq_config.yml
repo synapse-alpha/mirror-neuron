@@ -18,6 +18,17 @@ model:
       args:
         forward_value: 1
         backward_value: 0
+    subtensor:
+      name: DummySubtensor
+      args:
+        epoch_length: 10
+        network: mirror-subtensor
+    metagraph:
+      name: DummyMetagraph
+      args:
+        netuid: 0
+        network: mirror-metagraph
+        num_nodes: 16
     alpha: 0.01
 
 data:

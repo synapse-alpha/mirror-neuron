@@ -1,3 +1,4 @@
+import queue
 import torch
 import bittensor
 from transformers import AutoModel, AutoTokenizer, AutoConfig
@@ -17,6 +18,7 @@ class BaseGatingModel( torch.nn.Module, ABC ):
     def __init__(self, metagraph):
         super(BaseGatingModel, self).__init__()
         self._metagraph = metagraph
+        self.loss_history = queue.LifoQueue()
 
     @abstractmethod
     def forward(self, x):
@@ -165,3 +167,5 @@ class SequentialGatingModel( BaseGatingModel ):
         loss = torch.nn.functional.mse_loss( normalized_scores, normalized_rewards.detach() )
         loss.backward()
         self.optimizer.step()
+
+        self.loss_history.put(loss)
