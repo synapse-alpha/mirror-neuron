@@ -110,6 +110,15 @@ def run_plot_heatmap(df, uid_field, value_field, num_uids):
         # print(f'Logged {value_field} at step {row.step}: {arr}')
 
     df_uids = pd.DataFrame(arrs).T
+    fig = px.imshow(df_uids,
+              title=f'{value_field.title()} for Network',
+              color_continuous_scale='Blues', aspect='auto',
+              width=800, height=600, template='plotly_white').\
+        update_xaxes(title='Iteration').\
+        update_yaxes(title='UID').\
+        update_layout(font_size=14)
+    wandb.log({f'uid_vs_{value_field}': wandb.Html(fig.to_html())})
+        
     fig = px.imshow(df_uids.ewm(alpha=0.1, axis=1).mean(),
               title=f'{value_field.title()} for Network (EWM Smoothed)',
               color_continuous_scale='Blues', aspect='auto',
@@ -117,7 +126,7 @@ def run_plot_heatmap(df, uid_field, value_field, num_uids):
         update_xaxes(title='Iteration').\
         update_yaxes(title='UID').\
         update_layout(font_size=14)
-    wandb.log({f'uid_vs_{value_field}': wandb.Html(fig.to_html())})
+    wandb.log({f'uid_vs_{value_field}_ewm': wandb.Html(fig.to_html())})
 
     avg_values = df_uids.mean(axis=1)
     fig = px.bar(x=avg_values.index, y=avg_values.values, color=avg_values.values,
