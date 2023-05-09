@@ -1,0 +1,84 @@
+model:
+    id: my_model
+    dendrite_pool:
+      name: DummyDendritePool
+      args:
+        data_path: nq_open
+        baseline_fail_rate: 0.0
+        fail_rate:
+          1: 0.1
+          3: 0.3
+          5: 0.5
+          7: 1.0
+        baseline_fitness: 0.0
+        fitness:
+          2: 0.2
+          4: 0.4
+          6: 0.6
+          8: 0.8
+    gating_model:
+      name: RandomGatingModel
+      args:
+        frozen: False
+        seed: 0
+        distribution: uniform
+    reward_model:
+      name: RandomRewardModel
+      args:
+        forward_value: 1
+        backward_value: 0
+    subtensor:
+      name: DummySubtensor
+      args:
+        epoch_length: 10
+        network: mirror-subtensor
+    metagraph:
+      name: DummyMetagraph
+      args:
+        netuid: 0
+        network: mirror-metagraph
+        num_nodes: 16
+
+    alpha: 0.01
+
+data:
+    id: my_data
+    path: nq_open
+    schema:
+      train:
+        - row:
+          question: question
+          answer: answer
+    sample:
+      method: first
+      n: 100
+
+query:
+    id: my_query
+    chunk_size: 1
+    method:
+      # name: forward
+      name: train
+      args:
+        max_iter: 499
+    ignore_attr:
+      - hotkeys
+      - block
+
+analysis:
+    id: my_analysis
+    requires:
+      - my_query
+    create_features:
+      - question_length
+      - num_words
+      - avg_word_length
+    plot:
+      rewards:
+        - question_length
+        - num_words
+        - avg_word_length
+      scores:
+        - question_length
+        - num_words
+        - avg_word_length
