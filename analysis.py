@@ -53,8 +53,24 @@ def run_analysis(model=None, data=None):
 
     sanitize(df)
 
-    run_plot_heatmap(df, uid_field='uids', value_field='rewards', num_uids=num_uids)
-    run_plot_heatmap(df, uid_field=None, value_field='scores', num_uids=num_uids)
+    df['successful_scores' ] = df.apply(lambda x: x['scores'][x['uids']],axis=1)
+    long_df = df[['rewards','successful_scores']].explode(['rewards','successful_scores']).astype(float)    
+    r_p = long_df.groupby(long_df.index).corr(method='pearson')
+    cc_p = r_p.loc[r_p.index.get_level_values(1) == 'rewards',['successful_scores']].reset_index(drop=True).rolling(10).mean()    
+    
+    r_s = long_df.groupby(long_df.index).corr(method='spearman')
+    cc_s = r_s.loc[r_s.index.get_level_values(1) == 'rewards',['successful_scores']].reset_index(drop=True).rolling(10).mean()
+    df_corr = pd.concat([cc_p.assign(method='pearson'), cc_s.assign(method='spearman')])
+    fig = px.line(df_corr, y='successful_scores', color='method', 
+                  title='Correlation of Scores and Rewards, Rolling 10 Iterations',
+                  labels={'successful_scores': 'Correlation', 'index': 'Iteration'},
+                  width=800, height=600, template='plotly_white'
+                  ).update_traces(opacity=0.7
+                ).update_layout(legend_title_text='Method',font_size=14)
+    wandb.log({'correlation': fig})
+        
+    run_plot_uids(df, uid_field='uids', value_field='rewards', num_uids=num_uids)
+    run_plot_uids(df, uid_field=None, value_field='scores', num_uids=num_uids)
     # save dataframe to wandb as a table (this doesn't work because of the list-like columns)
     # wandb.log({'history': wandb.Table(dataframe=df)})
 
@@ -93,7 +109,7 @@ def run_analysis(model=None, data=None):
         run_plot3d(embedded_df, x, y, z)
 
 
-def run_plot_heatmap(df, uid_field, value_field, num_uids):
+def run_plot_uids(df, uid_field, value_field, num_uids):
 
     arrs = []
     for i in range(df.shape[0]):
@@ -103,13 +119,21 @@ def run_plot_heatmap(df, uid_field, value_field, num_uids):
         row = df.iloc[i]
 
         uids = row[uid_field] if uid_field is not None else range(num_uids)
-        # print(f'Row {i}: Setting {len(uids)} indices {uids} to {len(row[value_field])} values: {row[value_field]}')
+
         arr[uids] = row[value_field]
         arrs.append(arr)
         # wandb.log({value_field: wandb.Histogram(arr)}, step=row.step)
-        # print(f'Logged {value_field} at step {row.step}: {arr}')
 
     df_uids = pd.DataFrame(arrs).T
+    fig = px.imshow(df_uids,
+              title=f'{value_field.title()} for Network',
+              color_continuous_scale='Blues', aspect='auto',
+              width=800, height=600, template='plotly_white').\
+        update_xaxes(title='Iteration').\
+        update_yaxes(title='UID').\
+        update_layout(font_size=14)
+    wandb.log({f'uid_vs_{value_field}': wandb.Html(fig.to_html())})
+
     fig = px.imshow(df_uids.ewm(alpha=0.1, axis=1).mean(),
               title=f'{value_field.title()} for Network (EWM Smoothed)',
               color_continuous_scale='Blues', aspect='auto',
@@ -117,7 +141,7 @@ def run_plot_heatmap(df, uid_field, value_field, num_uids):
         update_xaxes(title='Iteration').\
         update_yaxes(title='UID').\
         update_layout(font_size=14)
-    wandb.log({f'uid_vs_{value_field}': wandb.Html(fig.to_html())})
+    wandb.log({f'uid_vs_{value_field}_ewm': wandb.Html(fig.to_html())})
 
     avg_values = df_uids.mean(axis=1)
     fig = px.bar(x=avg_values.index, y=avg_values.values, color=avg_values.values,
@@ -126,7 +150,8 @@ def run_plot_heatmap(df, uid_field, value_field, num_uids):
                 title=f'Average {value_field.title()} by UID',
                  labels={'x': 'UID', 'y': f'Average {value_field.title()}','color':''},
                  width=800, height=600, template='plotly_white',
-    ).update_layout(font_size=14,coloraxis_showscale=False)
+        ).update_traces(marker_line_color='grey'
+        ).update_layout(font_size=14,coloraxis_showscale=False)
     # change error bar color to grey
     fig.data[0].error_y.color = 'grey'
 
@@ -136,7 +161,7 @@ def run_plot_heatmap(df, uid_field, value_field, num_uids):
                 title=f'Average {value_field.title()}, all UIDs',
                  labels={'x': f'Average {value_field.title()}','color':''},
                  width=800, height=600, template='plotly_white',
-    ).update_layout(font_size=14,coloraxis_showscale=False)
+        ).update_layout(font_size=14,coloraxis_showscale=False)
 
     wandb.log({f'average_{value_field}': wandb.Html(fig.to_html())})
 
@@ -149,8 +174,28 @@ def run_plot_heatmap(df, uid_field, value_field, num_uids):
                 labels={'value': f'Average {value_field.title()}','variable':'Step Quantile'},
                 title=f'Average {value_field.title()}, all UIDs, by Quantile',
                  width=800, height=600, template='plotly_white',
-                 color_discrete_sequence=px.colors.sequential.deep_r)
+                 color_discrete_sequence=px.colors.sequential.deep_r
+            ).update_layout(font_size=14,coloraxis_showscale=False)
     wandb.log({f'average_slices_{value_field}': wandb.Html(fig.to_html())})
+
+    hit_success = df.uids.explode().value_counts().sort_index()
+    fig = px.bar(x=hit_success.index, y=hit_success.values, color=hit_success,
+           labels={'x':'UID','y':'Number of Calls'},
+           title='Number of Successful Calls by UID',
+           color_continuous_scale='Blues', height=600, width=800, template='plotly_white'
+        ).update_traces(marker_line_color='grey'
+        ).update_layout(font_size=14, coloraxis_showscale=False)
+    wandb.log({f'uid_hit_success': wandb.Html(fig.to_html())})
+    
+    hit_total = df.all_uids.explode().value_counts().sort_index()
+    fig = px.bar(x=hit_total.index, y=hit_total.values, color=hit_total,
+              labels={'x':'UID','y':'Number of Calls'},
+              title='Total Number of Calls by UID',
+              color_continuous_scale='Blues', height=600, width=800, template='plotly_white'
+        ).update_traces(marker_line_color='grey'
+        ).update_layout(font_size=14, coloraxis_showscale=False)
+    wandb.log({f'uid_hit_total': wandb.Html(fig.to_html())})
+    
 
 
 def run_plot(df, x, y, type='scatter', title=None, **kwargs):

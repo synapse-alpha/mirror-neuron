@@ -43,10 +43,7 @@ def run_train(model):
             gating_model_loss_plot['query_loss'].append(model.gating_model.loss_history.get()) # 1st pass
             gating_model_loss_plot['completion_loss'].append(model.gating_model.loss_history.get()) # 2nd pass
 
-        wandb.log({'gating_model_train.epoch': i })
-
-        # # most recent backward pass populates self.optimizer.loss
-        # wandb.log({'reward_train_loss': model.reward_model.optimizer.loss.item()})
+        wandb.log({'gating_model_train.epoch': i })        
 
         # add step time and step number to the added queue items
         add_call_metrics(model.history.queue, t0, i, added_size=model.history.qsize()-qsize)
