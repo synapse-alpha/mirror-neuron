@@ -29,17 +29,22 @@ class RewardModel(nn.Module):
 
     def __init__( self, model_path: str, device: str, config: 'bittensor.config' = None):
         super().__init__()
+        print('Loading model: ', model_path)
         config = AutoConfig.from_pretrained( model_path )
         self.model = AutoModelForCausalLM.from_config( config )
         self.config = self.model.config
+
+        print('Model loaded successfully')
         # `gpt-neo(x)` models use `hidden_size` attribute names instead of `n_embd``
         if config is None: config = RewardModel.config()
 
         self.config.n_embd = self.config.hidden_size if hasattr(self.config, "hidden_size") else self.config.n_embd
         self.device = torch.device( device )
+        # This line of code above expects a "transformer" in a wrapped property, as implemented in GPT models.
+        # Other LM models e.g. BERT don't have this property, so this line can compromise the flexibility of the code
         self.transformer = self.model.transformer
         self.v_head = nn.Linear(self.config.n_embd, 1, bias=False)
-        self.tokenizer = AutoTokenizer.from_pretrained('EleutherAI/gpt-j-6b')
+        self.tokenizer = AutoTokenizer.from_pretrained(model_path)
         self.tokenizer.pad_token = self.tokenizer.eos_token
         self.PAD_ID = self.tokenizer(self.tokenizer.pad_token)["input_ids"][0]
 

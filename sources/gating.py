@@ -101,8 +101,8 @@ class GatingModel( torch.nn.Module ):
                     Rewards for each uids as output by the reward model.
         """   
         normalized_scores = torch.nn.functional.softmax( scores, dim=0 ).to( self.device )
-        nomralized_rewards = torch.nn.functional.softmax( rewards, dim=0 ).to( self.device )
-        loss = torch.nn.functional.mse_loss( normalized_scores, nomralized_rewards.detach() )
+        normalized_rewards = torch.nn.functional.softmax( rewards, dim=0 ).to( self.device )
+        loss = torch.nn.functional.mse_loss( normalized_scores, normalized_rewards.detach() )
         loss.backward()
         self.history.put( SimpleNamespace(loss=loss.item()) )
         self.optimizer.step()

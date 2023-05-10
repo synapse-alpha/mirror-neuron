@@ -37,8 +37,6 @@ def _load_model_from_module(module, model_type, bt_config, metagraph=None, watch
             valid_kwargs = {k: v for k, v in cls_kwargs.items() if k in signature(cls).parameters}
             print(f'+ Found {cls_name!r} in {model_type!r}. Creating instance with args: {valid_kwargs}')
             model = cls( ** valid_kwargs )
-            if watch:
-                wandb.watch(model, log='all')#, log_freq=10, log_graph=True)
             return model
 
 
@@ -52,9 +50,6 @@ def load_model(bt_config=None, **kwargs):
 
     template = ModelConfigTemplate(**wandb.config.model)
     print(f'Template: {template}')
-
-    run_watch_experiment(name='alice') # only this one produces a graph
-    run_watch_experiment(name='bob')
 
     watch = True
     subtensor = _load_model_from_module(base.subtensor, model_type='subtensor', watch=False, bt_config=bt_config, **kwargs)

@@ -1,14 +1,12 @@
 import queue
-import torch
 import bittensor
-from transformers import AutoModel, AutoTokenizer, AutoConfig
-from typing import List, Union
-
-from base.values import ConstantValue, RandomValue, FrozenRandomValue
+import torch
+from transformers import AutoTokenizer
 from abc import ABC, abstractmethod
-
+from collections import OrderedDict
+from typing import List, Union
+from base.values import ConstantValue, RandomValue, FrozenRandomValue
 # expose raw GatingModel for use in other modules
-from sources.gating import GatingModel
 from sources.neuron import neuron
 # TODO: inherit from GatingModel and just override init
 
@@ -18,7 +16,7 @@ class BaseGatingModel( torch.nn.Module, ABC ):
     def __init__(self, metagraph):
         super(BaseGatingModel, self).__init__()
         self._metagraph = metagraph
-        self.loss_history = queue.LifoQueue()
+        self.loss_history = queue.Queue()
 
     @abstractmethod
     def forward(self, x):
@@ -27,6 +25,14 @@ class BaseGatingModel( torch.nn.Module, ABC ):
     @abstractmethod
     def backward(self, completions, rewards):
         pass
+
+
+class LambdaLayer(torch.nn.Module):
+    def __init__(self, lambd):
+        super(LambdaLayer, self).__init__()
+        self.lambd = lambd
+    def forward(self, x):
+        return self.lambd(x)
 
 
 class LongestMessageGatingModel( BaseGatingModel ):
@@ -126,14 +132,19 @@ class SequentialGatingModel( BaseGatingModel ):
         self.embedding_layer.weight.requires_grad = False
         
         # LSTM layers
-        self.layers = [torch.nn.LSTM(self.embedding_dim, self.hidden_size[0], batch_first=True)]
-        self.layers += [torch.nn.LSTM(self.hidden_size[i], hidden_dim,  batch_first=True) for i, hidden_dim in enumerate(self.hidden_size[1:])]
-
-        self.model = torch.nn.Sequential(*([self.embedding_layer]+self.layers))
         # generalize this so that num_hidden can be zero/empty so that we just learn weights from embedding space to uid space
-        
-        # Linear layer
-        self.linear = torch.nn.Linear(self.hidden_size[-1], self.metagraph.n)
+        self.lstm_hidden_layers = [
+            (f"hidden_lstm_{i}", torch.nn.LSTM(self.hidden_size[i], hidden_dim, batch_first=True))
+            for i, hidden_dim in enumerate(self.hidden_size[1:])]
+
+        self.model = torch.nn.Sequential(OrderedDict([
+            ('embedding', self.embedding_layer),
+            ('lstm', torch.nn.LSTM(self.embedding_dim, self.hidden_size[0], batch_first=True)),
+            *self.lstm_hidden_layers,
+            ('lambda', LambdaLayer(lambda hidden_states: hidden_states[0])),
+            ('linear', torch.nn.Linear(self.hidden_size[-1], self.metagraph.n))
+        ]))
+
         self.optimizer = torch.optim.SGD(
             [ {"params": self.parameters()} ],
             lr = self.config.gating.learning_rate,
@@ -149,9 +160,10 @@ class SequentialGatingModel( BaseGatingModel ):
                 scores (:obj:`torch.FloatTensor` of shape :obj:`(network_size)`):
                     Scores for each uids as output by the gating model.
         """
-        inputs = self.tokenizer( message, return_tensors="pt" ).to( self.device )
-        hidden_states = self.model( inputs['input_ids'] )#.last_hidden_state[0, -1, :]
-        return self.linear( hidden_states[0] )[0,-1,:]
+        inputs = self.tokenizer(message, return_tensors="pt" ).to( self.device)
+        output = self.model(inputs['input_ids'])[0, -1,:]
+
+        return output
 
 
     def backward( self, scores: torch.FloatTensor, rewards: torch.FloatTensor ): 

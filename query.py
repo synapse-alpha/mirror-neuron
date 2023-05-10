@@ -1,5 +1,4 @@
 import wandb
-import torch
 import time
 import tqdm
 import pandas as pd
@@ -24,12 +23,26 @@ def run_train(model):
     ignore = template.ignore_attr or {}
     max_iter = template.method.get('args', {}).get('max_iter',1)
 
+    gating_model_loss_plot = {
+        'epoch': [],
+        'query_loss': [],
+        'completion_loss': []
+    }
+
+    wandb.watch(model.gating_model.model, log='gradients', log_freq=1, log_graph=True)
+
     for i in tqdm.tqdm(range(max_iter)):
         t0 = time.time()
         qsize = model.history.qsize()
         model.train(max_iter=1)
-        # most recent backward pass populates self.optimizer.loss
-        # wandb.log({'gating_train_loss': model.gating_model.optimizer.loss.item()})
+
+        # The train method has two backward passes, one for the query and one for the completion model
+        gating_model_loss_plot['epoch'].append(i)
+        gating_model_loss_plot['query_loss'].append(model.gating_model.loss_history.get()) # 1st pass
+        gating_model_loss_plot['completion_loss'].append(model.gating_model.loss_history.get()) # 2nd pass
+
+        wandb.log({'gating_model_train.epoch': i })
+
         # # most recent backward pass populates self.optimizer.loss
         # wandb.log({'reward_train_loss': model.reward_model.optimizer.loss.item()})
 
@@ -39,6 +52,14 @@ def run_train(model):
         if i % template.save_interval == 0:
             events = [{k: v for k, v in event.__dict__.items() if k not in ignore} for event in model.history.queue]
             save_results(save_path, events)
+
+    wandb.log({"gating_model_train.loss": wandb.plot.line_series(
+        xs=gating_model_loss_plot['epoch'],
+        ys=[gating_model_loss_plot['query_loss'], gating_model_loss_plot['completion_loss']],
+        keys=["Query loss", "Completion loss"],
+        title="Gating model training loss",
+        xname="Epoch")})
+
 
 def run_forward(model, data):
     """Run the forward pass on the data
