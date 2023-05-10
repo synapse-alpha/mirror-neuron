@@ -38,8 +38,10 @@ def run_train(model):
 
         # The train method has two backward passes, one for the query and one for the completion model
         gating_model_loss_plot['epoch'].append(i)
-        gating_model_loss_plot['query_loss'].append(model.gating_model.loss_history.get()) # 1st pass
-        gating_model_loss_plot['completion_loss'].append(model.gating_model.loss_history.get()) # 2nd pass
+
+        if model.gating_model.loss_history.qsize() >= 2:
+            gating_model_loss_plot['query_loss'].append(model.gating_model.loss_history.get()) # 1st pass
+            gating_model_loss_plot['completion_loss'].append(model.gating_model.loss_history.get()) # 2nd pass
 
         wandb.log({'gating_model_train.epoch': i })
 

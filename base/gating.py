@@ -16,6 +16,8 @@ class BaseGatingModel( torch.nn.Module, ABC ):
     def __init__(self, metagraph):
         super(BaseGatingModel, self).__init__()
         self._metagraph = metagraph
+        # Adds mock linear layer so wandb.watch doesn't break
+        self.model = torch.nn.Linear(20, 30)
         self.loss_history = queue.Queue()
 
     @abstractmethod
