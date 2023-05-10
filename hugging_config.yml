@@ -1,4 +1,4 @@
-device: cpu
+device: cuda
 
 model:
     id: my_model
@@ -8,16 +8,15 @@ model:
         fail_rate: 0.1
         data_path: nq_open
     gating_model:
-      name: SequentialGatingModel
+      name: HuggingFaceGatingModel
       args:
-        tokenizer_name: 'bert-base-cased'
-        hidden_size: 32
-        embedding_dim: 64
+        model_name: EleutherAI/gpt-neo-125m
+        tokenizer_name: EleutherAI/gpt-neo-125m
     reward_model:
-      name: RandomRewardModel
+      name: HuggingFaceRewardModel
       args:
-        forward_value: 1
-        backward_value: 0
+        model_path: Dahoas/gpt2-rm-static
+        tokenizer_path: EleutherAI/gpt-j-6b
     subtensor:
       name: DummySubtensor
       args:

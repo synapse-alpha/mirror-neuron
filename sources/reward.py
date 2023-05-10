@@ -25,33 +25,42 @@ from torch import nn
 from typing import List
 from transformers import AutoModelForCausalLM, AutoTokenizer, AutoConfig
 
-class RewardModel(nn.Module):
 
-    def __init__( self, model_path: str, device: str, config: 'bittensor.config' = None):
+class RewardModel(nn.Module):
+    def __init__(self, model_path: str, device: str, config: "bittensor.config" = None):
         super().__init__()
-        config = AutoConfig.from_pretrained( model_path )
-        self.model = AutoModelForCausalLM.from_config( config )
+        config = AutoConfig.from_pretrained(model_path)
+        self.model = AutoModelForCausalLM.from_config(config)
         self.config = self.model.config
         # `gpt-neo(x)` models use `hidden_size` attribute names instead of `n_embd``
-        if config is None: config = RewardModel.config()
 
-        self.config.n_embd = self.config.hidden_size if hasattr(self.config, "hidden_size") else self.config.n_embd
-        self.device = torch.device( device )
+        # NOTE: This will break unless config passed but isn't in neuron.py...
+        if config is None:
+            config = RewardModel.config()
+
+        self.config.n_embd = (
+            self.config.hidden_size
+            if hasattr(self.config, "hidden_size")
+            else self.config.n_embd
+        )
+        self.device = torch.device(device)
         self.transformer = self.model.transformer
         self.v_head = nn.Linear(self.config.n_embd, 1, bias=False)
-        self.tokenizer = AutoTokenizer.from_pretrained('EleutherAI/gpt-j-6b')
+        self.tokenizer = AutoTokenizer.from_pretrained("EleutherAI/gpt-j-6b")
         self.tokenizer.pad_token = self.tokenizer.eos_token
         self.PAD_ID = self.tokenizer(self.tokenizer.pad_token)["input_ids"][0]
 
-    def reward( self, completions: List[str] ) -> torch.FloatTensor:
-        def reward_fn( samples ):
-            if samples is None: return 0
+    def reward(self, completions: List[str]) -> torch.FloatTensor:
+        def reward_fn(samples):
+            if samples is None:
+                return 0
             scores_list = []
             batch_size = 1
             for i in range(0, len(samples), batch_size):
                 sub_samples = samples[i : i + batch_size]
                 sub_samples = [
-                    "<|startoftext|>" + chosen + "<|endoftext|>" for chosen in sub_samples
+                    "<|startoftext|>" + chosen + "<|endoftext|>"
+                    for chosen in sub_samples
                 ]
                 encodings_dict = self.tokenizer(
                     sub_samples,
@@ -60,23 +69,25 @@ class RewardModel(nn.Module):
                     padding="max_length",
                     return_tensors="pt",
                 )
-                input_ids = encodings_dict["input_ids"].to( self.device )
-                attn_masks = encodings_dict["attention_mask"].to( self.device )
+                input_ids = encodings_dict["input_ids"].to(self.device)
+                attn_masks = encodings_dict["attention_mask"].to(self.device)
                 input_ids = input_ids.repeat(2, 1)
                 attn_masks = attn_masks.repeat(2, 1)
                 with torch.no_grad():
-                    sub_scores = self.forward(input_ids=input_ids, attention_mask=attn_masks)
+                    sub_scores = self.forward(
+                        input_ids=input_ids, attention_mask=attn_masks
+                    )
                 scores_list.append(sub_scores["chosen_end_scores"])
             scores = torch.cat(scores_list, dim=0).mean().item()
             return scores
-        
+
         with torch.no_grad():
             rewards = [reward_fn([completion]) for completion in completions]
             for completion, reward in zip(completions, rewards):
                 print(completion)
                 print(reward)
             return torch.tensor(rewards, dtype=torch.float32)
-        
+
     def forward(
         self,
         input_ids=None,
@@ -147,7 +158,9 @@ class RewardModel(nn.Module):
             rejected_end_scores.append(r_truncated_reward[-1])
 
             # Compute loss based on truncated rewards (ignore padding)
-            loss += -torch.log(torch.sigmoid(c_truncated_reward - r_truncated_reward)).mean()
+            loss += -torch.log(
+                torch.sigmoid(c_truncated_reward - r_truncated_reward)
+            ).mean()
         loss = loss / bs
 
         if not inference:
