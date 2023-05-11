@@ -3,7 +3,7 @@
   We can use these templates to validate the configuration files.
 
   More complex fields can also be validated by using further custom classes or `pydantic` library.
-  
+
   @sarthakbatragatech: I think
   these templates should actually be used to create the config files (good idea copilot)
   but i was actually trying to say that the validation should come from trying to instantiate the models themselves (although we don't want to download or load the models themselves at that point)

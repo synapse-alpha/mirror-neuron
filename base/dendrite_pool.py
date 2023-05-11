@@ -68,7 +68,7 @@ class DummyDendritePool(MetagraphMixin, torch.nn.Module):
 
         self.history = queue.Queue()
 
-    def apply(self, roles, messages, return_call, timeout, uid):
+    def apply(self, roles, messages, return_call, timeout, uid) -> 'DummyRPCResponse':
 
         if random.random() < self.fail_rate.get(int(uid), self.baseline_fail_rate):
             return DummyRPCResponse()

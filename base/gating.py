@@ -166,7 +166,7 @@ class SequentialGatingModel(BaseGatingModel):
     def forward(self, message: str) -> "torch.FloatTensor":
         """ Runs a forward pass through the model.
             Args:
-                message (:obj:`str`): 
+                message (:obj:`str`):
                     text message to be encoded.
             Returns:
                 scores (:obj:`torch.FloatTensor` of shape :obj:`(network_size)`):
@@ -310,7 +310,7 @@ class HuggingFaceGatingModel(BaseGatingModel):
     def forward(self, message: str) -> "torch.FloatTensor":
         """ Runs a forward pass through the model.
             Args:
-                message (:obj:`str`): 
+                message (:obj:`str`):
                     text message to be encoded.
             Returns:
                 scores (:obj:`torch.FloatTensor` of shape :obj:`(network_size)`):
