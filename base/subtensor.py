@@ -16,7 +16,7 @@ class DummySubstrateResponse:
 
 
 @dataclass
-class BaseSubtensor( torch.nn.Module, ABC ):
+class BaseSubtensor(torch.nn.Module, ABC):
 
     network: str
     block: int
@@ -27,7 +27,7 @@ class BaseSubtensor( torch.nn.Module, ABC ):
     def check_config(self):
         pass
 
-    def serve_axon(self, netuid, axon ):
+    def serve_axon(self, netuid, axon):
         pass
 
     def _check_delegated(self, delegated):
@@ -38,9 +38,13 @@ class BaseSubtensor( torch.nn.Module, ABC ):
             delegated = [[SimpleNamespace(nominators=())]]
         else:
             try:
-                nominators = { nomin[0]: nomin[1] for nomin in delegated[0][0].nominators }
+                nominators = {
+                    nomin[0]: nomin[1] for nomin in delegated[0][0].nominators
+                }
             except Exception as e:
-                raise ValueError('delegated must be a list of lists of SimpleNamespace(nominators=())')
+                raise ValueError(
+                    "delegated must be a list of lists of SimpleNamespace(nominators=())"
+                )
 
         return delegated
 
@@ -60,9 +64,16 @@ class BaseSubtensor( torch.nn.Module, ABC ):
         pass
 
 
-class DummySubtensor( BaseSubtensor ):
-
-    def __init__(self, network='mirror', block=1, epoch_length=100, delegated=None, metagraph=None, config=None):
+class DummySubtensor(BaseSubtensor):
+    def __init__(
+        self,
+        network="mirror",
+        block=1,
+        epoch_length=100,
+        delegated=None,
+        metagraph=None,
+        config=None,
+    ):
         self.network = network
         self.block = block
         self.epoch_length = epoch_length
@@ -74,17 +85,19 @@ class DummySubtensor( BaseSubtensor ):
     def get_delegated(self, ss58_address):
         return self.delegated
 
-    def record_event( self, event: SimpleNamespace ):
-        self.history.put( event )
+    def record_event(self, event: SimpleNamespace):
+        self.history.put(event)
 
     def set_weights(self, wallet, netuid, uids, weights, wait_for_finalization=True):
-        event = DummySubstrateResponse(wallet=wallet, netuid=netuid, uids=uids, weights=weights)
+        event = DummySubstrateResponse(
+            wallet=wallet, netuid=netuid, uids=uids, weights=weights
+        )
         self.history.put(event)
-        
+
     def neurons(self, netuid):
         return self.metagraph.neurons
 
-class Subtensor(bittensor.subtensor):
 
-    def __init__(self, config ):
+class Subtensor(bittensor.subtensor):
+    def __init__(self, config):
         super(Subtensor, self).__init__(config)
