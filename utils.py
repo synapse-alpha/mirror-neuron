@@ -2,7 +2,8 @@ import argparse
 import pickle
 import pandas as pd
 import torch
-
+import tqdm
+import json
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -34,13 +35,36 @@ def save_results(path, outputs):
         raise ValueError(f'Unknown file extension for {path!r}')
 
 def load_results(path):
+    
+    print(f'Loading results from {path!r}')
 
     if path.endswith('.pkl'):
         with open(path, 'rb') as f:
             events = pickle.load(f)
-            print(f'Loaded {len(events)} results from {path!r}')
             return pd.DataFrame(events)
     elif path.endswith('.csv'):
         return pd.read_csv(path)
+    elif path.endswith('.log'):
+        return parse_log(path)
     else:
         raise ValueError(f'Unknown file extension for {path!r}')
+    
+def parse_log(path: str) -> pd.DataFrame:
+    events = []
+    with open(path,'r') as f:
+        for line in tqdm.tqdm(f.readlines()):
+            event = json.loads(line)
+            
+            record = event.get('record',{})
+            record_elapsed_content = record.get('elapsed',{})
+            record_extra_content = record.get('extra',{})
+            
+            event.update(record_elapsed_content)
+            event.update(record_extra_content)
+            event.update({'timestamp': event['text'].split('|')[0]})
+            del event['text']
+            del event['record'] 
+            
+            events.append(event)
+    
+    return pd.DataFrame(events).astype({'timestamp': 'datetime64[ns]'}).reset_index().rename(columns={'index': 'step'})
