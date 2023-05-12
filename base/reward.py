@@ -3,7 +3,7 @@ import torch
 
 from base.values import ConstantValue, RandomValue
 from abc import ABC, abstractmethod
-
+from typing import List
 # expose raw RewardModel for use in other modules
 from sources.reward import RewardModel
 

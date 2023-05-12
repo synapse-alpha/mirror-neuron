@@ -1,0 +1,19 @@
+
+analysis:
+    id: my_analysis
+    requires: # file that will be loaded
+      - /home/ubuntu/.bittensor/miners/opentensor/main/netuid1/core_prompting_validator/completions.log
+    create_features:
+      prompt:
+        - sentence_length
+        - num_words
+        - avg_word_length
+      completion:
+        - sentence_length
+        - num_words
+        - avg_word_length
+    plot:
+      rewards:
+        - sentence_length
+        - num_words 
+        - avg_word_length
