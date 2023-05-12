@@ -13,6 +13,14 @@ from sklearn.preprocessing import MinMaxScaler
 from utils import load_results
 from loaders.templates import AnalysisConfigTemplate, QueryConfigTemplate
 
+# Add plots:
+# - Leaderboard of UIDs
+# - Leaderboard of questions and answers
+# - Stats of questions, and answers (frequencies, and rewards for doing so)
+# - Completion length
+# - Clustering of similar UIDs by Q&As
+# - Reward stats versus block
+# - Timeout rate
 
 def sanitize(df):
 
@@ -24,14 +32,18 @@ def sanitize(df):
         print(f'Column {c!r} is list-like with lengths {set(df[c].apply(len))}')
         df[c] = df[c].apply(lambda x: np.array(x).flatten())
 
-def _tabularize_hack(df):
-    """Convert list-like columns to tabular format
+def tabularize(df, ref_col):
+    """Expand list-like columns into tabular format, using the reference column to determine the number of items to expand
     """
-    # detect list-like columns
+    # iterate over dataframe rows
+    rows = []
+    for idx in tqdm.tqdm(df.index):
+        row = df.loc[idx]
+        n = len(row[ref_col])
+        rows.append( {k: v[:n] if isinstance(v, list) else v for k, v in row.items()} )
+            
     list_cols = [c for c, ser in df.items() if ser.apply(lambda x: is_list_like(x)).any()]
-    for c in list_cols:
-        # here we just grab first index of the list (TEMPORARY HACK)
-        df[c] = df[c].apply(lambda x: x[0])
+    return pd.DataFrame(rows, index=df.index).explode(column=list_cols)
 
 
 def run_analysis(model=None, data=None):
@@ -39,57 +51,58 @@ def run_analysis(model=None, data=None):
     template = AnalysisConfigTemplate(**wandb.config.analysis)
     print(f'Template: {template}')
 
-    # load the results from the query
-    load_path = QueryConfigTemplate(**wandb.config.query).save_path()
-    df = load_results(load_path)
+    # load the results from the query (can be multiple)
+    frames = []
+    for load_path in template.requires:
+        frames.append(load_results(load_path).assign(path=load_path))
+    df = pd.concat(frames,axis=0)
+    
 
     if model is not None:
         num_uids = model.metagraph.n
     else: # infer from the data
-        num_uids = df.uids.apply(max).max()
+        num_uids = df.uids.apply(max).max()+1
 
     print(df)
     print(df.iloc[0])
 
     sanitize(df)
 
-    df['successful_scores' ] = df.apply(lambda x: x['scores'][x['uids']],axis=1)
-    long_df = df[['rewards','successful_scores']].explode(['rewards','successful_scores']).astype(float)    
-    r_p = long_df.groupby(long_df.index).corr(method='pearson')
-    cc_p = r_p.loc[r_p.index.get_level_values(1) == 'rewards',['successful_scores']].reset_index(drop=True).rolling(10).mean()    
-    
-    r_s = long_df.groupby(long_df.index).corr(method='spearman')
-    cc_s = r_s.loc[r_s.index.get_level_values(1) == 'rewards',['successful_scores']].reset_index(drop=True).rolling(10).mean()
-    df_corr = pd.concat([cc_p.assign(method='pearson'), cc_s.assign(method='spearman')])
-    fig = px.line(df_corr, y='successful_scores', color='method', 
-                  title='Correlation of Scores and Rewards, Rolling 10 Iterations',
-                  labels={'successful_scores': 'Correlation', 'index': 'Iteration'},
-                  width=800, height=600, template='plotly_white'
-                  ).update_traces(opacity=0.7
-                ).update_layout(legend_title_text='Method',font_size=14)
-    wandb.log({'correlation': fig})
         
-    run_plot_uids(df, uid_field='uids', value_field='rewards', num_uids=num_uids)
-    run_plot_uids(df, uid_field=None, value_field='scores', num_uids=num_uids)
+    if 'rewards' in df:
+        run_plot_uids(df, uid_field='uids', value_field='rewards', num_uids=num_uids)
+    if 'scores' in df:
+        run_plot_uids(df, uid_field=None, value_field='scores', num_uids=num_uids)
+        run_score_reward_correlation(df)
     # save dataframe to wandb as a table (this doesn't work because of the list-like columns)
     # wandb.log({'history': wandb.Table(dataframe=df)})
 
-    _tabularize_hack(df) # just take first element of everything list like
+    # _tabularize_hack(df) # just take first element of everything list like
+    df = tabularize(df)
 
     # save dataframe to wandb as a table
     wandb.log({'history_tabular': wandb.Table(dataframe=df)})
 
     print(df)
     print(df.iloc[0])
-
+    
+    if 'step' not in df:
+        df['step'] = np.arange(len(df))
+    if 'step_sub' not in df:
+        df['step_sub'] = np.arange(len(df))
+        
     rewards_table = df.set_index(['step','step_sub'])['rewards'].apply(pd.Series)
     rewards_table.columns = [f'reward_{i}' for i in range(rewards_table.shape[1])]
     run_line_series(xs=[df.step.values for _ in rewards_table.columns],
                     ys=[rewards_table[c].values for c in rewards_table.columns], keys=rewards_table.columns,
                     title='Rewards')
 
-    run_plot(df, x='step', y='call_time', title='Call time', type='line')
-    run_features(df=df, feature_names=template.create_features, model=model)
+    if 'call_time' in df:
+        run_plot(df, x='step', y='call_time', title='Call time', type='line')
+    
+    if template.create_features:
+        for base_column, feature_names in template.create_features.items():
+            run_features(df=df, feature_names=feature_names, model=model, base_column=base_column)
 
     if template.plot is not None:
         for y, x_list in template.plot.items():
@@ -104,10 +117,26 @@ def run_analysis(model=None, data=None):
         y = columns [1]
         z = columns[2]
 
-        embedded_df = run_sentence_embedding(df, reward_model=model.reward_model, scaler=embedding_scaler, x=x, y=y, z=z)
+        embedded_df = run_sentence_embedding(df, reward_model=model.reward_model, scaler=embedding_scaler, x=x, y=y, z=z, prompt_name=template.prompt_name)
 
         run_plot3d(embedded_df, x, y, z)
 
+def run_score_reward_correlation(df):
+    df['successful_scores' ] = df.apply(lambda x: x['scores'][x['uids']],axis=1)
+    long_df = df[['rewards','successful_scores']].explode(['rewards','successful_scores']).astype(float)    
+    r_p = long_df.groupby(long_df.index).corr(method='pearson')
+    cc_p = r_p.loc[r_p.index.get_level_values(1) == 'rewards',['successful_scores']].reset_index(drop=True).rolling(10).mean()    
+    
+    r_s = long_df.groupby(long_df.index).corr(method='spearman')
+    cc_s = r_s.loc[r_s.index.get_level_values(1) == 'rewards',['successful_scores']].reset_index(drop=True).rolling(10).mean()
+    df_corr = pd.concat([cc_p.assign(method='pearson'), cc_s.assign(method='spearman')])
+    fig = px.line(df_corr, y='successful_scores', color='method', 
+                  title='Correlation of Scores and Rewards, Rolling 10 Iterations',
+                  labels={'successful_scores': 'Correlation', 'index': 'Iteration'},
+                  width=800, height=600, template='plotly_white'
+                  ).update_traces(opacity=0.7
+                ).update_layout(legend_title_text='Method',font_size=14)
+    wandb.log({'correlation': fig})    
 
 def run_plot_uids(df, uid_field, value_field, num_uids):
 
@@ -226,26 +255,29 @@ def run_plot3d(df, x, y, z):
             title=f'{x} vs {y}')})
 
 
-def run_features(df, feature_names, model=None, col='message'):
+def run_features(df, feature_names, base_column, model=None):
 
+    assert base_column in df.columns, f'Base column {base_column!r} not in dataframe'
+    
     # make some high level features which describe salient properties of questions such as number of words, length of question, etc.
-    if 'question_length' in feature_names:
-        df['question_length'] = df[col].str.len()
+    if 'sentence_length' in feature_names:
+        df['sentence_length'] = df[base_column].str.len()
 
     if 'num_words' in feature_names:
-        df['num_words'] = df[col].str.split().apply(len)
+        df['num_words'] = df[base_column].str.split().apply(len)
 
     if 'avg_word_length' in feature_names:
         df['avg_word_length'] = df.question_length / df.num_words
 
     if 'median_word_length' in feature_names:
-        df['median_word_length'] = df[col].str.split().apply(lambda x: np.median([len(w) for w in x]))
+        df['median_word_length'] = df[base_column].str.split().apply(lambda x: np.median([len(w) for w in x]))
 
     if 'first_word' in feature_names:
-        df['first_word'] = df[col].str.split().apply(lambda x: x[0])
+        df['first_word'] = df[base_column].str.split().apply(lambda x: x[0])
 
     if 'reward_num_tokens' in feature_names:
-        df['reward_num_tokens'] = df[col].apply(lambda x: len(model.reward_model.tokenizer.encode(x)))
+        assert model is not None, f'A model with reward_model attribute is required to compute the number of tokens'
+        df['reward_num_tokens'] = df[base_column].apply(lambda x: len(model.reward_model.tokenizer.encode(x)))
 
     return df
 
@@ -263,6 +295,7 @@ def run_sentence_embedding(
         x=None,
         y=None,
         z=None,
+        base_column=None,
         **kwargs):
 
     """Adds embedding values to DF to be plotted"""
@@ -276,8 +309,10 @@ def run_sentence_embedding(
         if device is None:
             device = reward_model.device
 
+    assert base_column in df.columns, f'Base column {base_column!r} not in dataframe'
+
     embeddings_data = []
-    pbar = tqdm.tqdm(df.message.values, unit='messages', desc='Embedding messages')
+    pbar = tqdm.tqdm(df[base_column].values, unit=base_column, desc=f'Embedding {base_column}')
     for i, question in enumerate(pbar):
 
         encodings_dict = tokenizer(
