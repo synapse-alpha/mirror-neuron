@@ -3,10 +3,10 @@ import torch
 import argparse
 import bittensor
 import torch
-from transformers import AutoTokenizer
+from transformers import AutoTokenizer, AutoModel, AutoConfig
 from abc import ABC, abstractmethod
 from collections import OrderedDict
-from typing import List, Union
+from typing import List, Union, Dict, Any, Optional
 from base.values import ConstantValue, RandomValue, FrozenRandomValue
 # expose raw GatingModel for use in other modules
 from sources.neuron import neuron
@@ -15,7 +15,7 @@ from sources.neuron import neuron
 
 
 class BaseGatingModel(torch.nn.Module, ABC):
-    def __init__(self, metagraph):
+    def __init__(self, metagraph: 'bittensor.metagraph'):
         super(BaseGatingModel, self).__init__()
         self._metagraph = metagraph
         # Adds mock linear layer so wandb.watch doesn't break
@@ -23,16 +23,16 @@ class BaseGatingModel(torch.nn.Module, ABC):
         self.loss_history = queue.Queue()
 
     @abstractmethod
-    def forward(self, x):
+    def forward(self, x: Any):
         pass
 
     @abstractmethod
-    def backward(self, completions, rewards):
+    def backward(self, completions: 'torch.FloatTensor', rewards: 'torch.FloatTensor'):
         pass
 
 
 class LambdaLayer(torch.nn.Module):
-    def __init__(self, lambd):
+    def __init__(self, lambd: function):
         super(LambdaLayer, self).__init__()
         self.lambd = lambd
     def forward(self, x):
@@ -40,16 +40,16 @@ class LambdaLayer(torch.nn.Module):
 
 
 class LongestMessageGatingModel(BaseGatingModel):
-    def __init__(self, metagraph=None):
+    def __init__(self, metagraph: 'bittensor.metagraph' = None):
         super(LongestMessageGatingModel, self).__init__()
         self._metagraph = metagraph
 
-    def forward(self, x, n):
+    def forward(self, x: 'torch.Tensor', n: int) -> 'torch.Tensor':
         # return ones for the longest n messages and zeros for the rest
         threshold = torch.topk(x, n, largest=False).values[-1]
         return torch.ones(x.shape) * (x >= threshold).float()
 
-    def backward(self, scores, rewards):
+    def backward(self, scores: 'torch.Tensor', rewards: 'torch.Tensor') -> 'torch.Tensor':
 
         return torch.ones(self.metagraph.n.item())
 
@@ -57,12 +57,12 @@ class LongestMessageGatingModel(BaseGatingModel):
 class RandomGatingModel(BaseGatingModel):
     def __init__(
         self,
-        frozen=False,
-        seed=0,
-        distribution="uniform",
-        p0=1,
-        p1=0,
-        metagraph=None,
+        frozen: bool = False,
+        seed: int = 0,
+        distribution: str = "uniform",
+        p0: int = 1,
+        p1: int = 0,
+        metagraph: 'bittensor.metagraph' = None,
         config: "bittensor.config" = None,
     ):
         super(RandomGatingModel, self).__init__(metagraph=metagraph)
@@ -70,32 +70,31 @@ class RandomGatingModel(BaseGatingModel):
         value_type = FrozenRandomValue if frozen else RandomValue
         self.value = value_type(seed=seed, distribution=distribution, p0=p0, p1=p1)
 
-    def forward(self, x):
+    def forward(self, x) -> Union[FrozenRandomValue, RandomValue]:
         # each neuron is given a random score
         return self.value(x, self.metagraph.n.item())
 
-    def backward(self, scores, rewards):
+    def backward(self, scores: 'torch.Tensor', rewards: 'torch.Tensor') -> Union[FrozenRandomValue, RandomValue]:
         # each neuron is given a random score
         return self.value(torch.zeros(self.metagraph.n.item()), self.metagraph.n.item())
 
 
 class ConstantGatingModel(BaseGatingModel):
-    def __init__(self, value=1, metagraph=None):
+    def __init__(self, value: int = 1, metagraph: 'bittensor.metagraph' = None):
         super(ConstantGatingModel, self).__init__(metagraph=metagraph)
         self.value = ConstantValue(value)
 
-    def forward(self, x):
+    def forward(self, x: Any) -> ConstantValue:
         # each neuron is given a constant score
         return self.value(x, self.metagraph.n.item())
 
-    def backward(self, scores, rewards):
-
+    def backward(self, scores: 'torch.Tensor', rewards: 'torch.Tensor') -> 'torch.Tensor':
         # each neuron is given a random score
         return torch.random(self.metagraph.n.item())
 
 
 class MaskedGatingModel(BaseGatingModel):
-    def __init__(self, mask=10, metagraph=None):
+    def __init__(self, mask: int = 10, metagraph: 'bittensor.metagraph' = None):
         super(MaskedGatingModel, self).__init__(metagraph=metagraph)
         raise NotImplementedError(f"Not implemented yet.")
 
@@ -188,7 +187,7 @@ class SequentialGatingModel(BaseGatingModel):
 
         return output
 
-    def backward(self, scores: torch.FloatTensor, rewards: torch.FloatTensor):
+    def backward(self, scores: 'torch.FloatTensor', rewards: 'torch.FloatTensor'):
         """ Runs a backward pass through the model.
             Args:
                 scores (:obj:`torch.FloatTensor` of shape :obj:`(metagraph.n)`):
@@ -215,7 +214,7 @@ class HuggingFaceGatingModel(BaseGatingModel):
     """
 
     @classmethod
-    def add_args(cls, parser: argparse.ArgumentParser):
+    def add_args(cls, parser: 'argparse.ArgumentParser'):
         """
         Adds command line arguments to the parser that are used to configure the gating model.
         The arguments added are:
@@ -250,7 +249,7 @@ class HuggingFaceGatingModel(BaseGatingModel):
         )
 
     @classmethod
-    def config(cls):
+    def config(cls) -> "bittensor.Config":
         """
         Returns a configuration object that contains the command line arguments for the gating model.
         """
@@ -281,7 +280,7 @@ class HuggingFaceGatingModel(BaseGatingModel):
         """
         super(HuggingFaceGatingModel, self).__init__(metagraph=None)
         if config is None:
-            config = GatingModel.config()
+            config = HuggingFaceGatingModel.config()
         if model_name is not None:
             config.gating.model_name = model_name
         if num_uids is not None:
@@ -304,7 +303,7 @@ class HuggingFaceGatingModel(BaseGatingModel):
             momentum=self.config.gating.momentum,
         )
 
-    def backward(self, scores: torch.FloatTensor, rewards: torch.FloatTensor):
+    def backward(self, scores: 'torch.FloatTensor', rewards: 'torch.FloatTensor'):
         """ Runs a backward pass through the model.
             Args:
                 scores (:obj:`torch.FloatTensor` of shape :obj:`(metagraph.n)`):
