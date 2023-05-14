@@ -89,6 +89,62 @@ Also the code performance can be profiled using `pyinstrument` by passing an add
 python3 main --config dummy_config.yml --profile
 ```
 
+## Available models
+| Model Type       | Available Models                             |
+|------------------|----------------------------------------------|
+| `Reward models`  | `BaseRewardModel`, `DummyRewardModel`, `ConstantRewardModel`, `RandomRewardModel`, `CustomRewardModel`, `HuggingFaceRewardModel` |
+| `Gating models`  | `BaseGatingModel`, `LongestMessageGatingModel`, `RandomGatingModel`, `ConstantGatingModel`, `MaskedGatingModel`, `SequentialGatingModel`, `HuggingFaceGatingModel` |
+| `Dendrite pools` | `DummyDendritePool` |
+| `Metagraphs`     | `BaseMetagraph`, `DummyMetagraph`, `Metagraph` |
+| `Subtensors`     | `BaseSubtensor`, `DummySubtensor`, `Subtensor` |
+
+
+### Gating Models
+| Class Name                     | Description                                                                                                                                  |
+|-------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------|
+| `BaseGatingModel`              | An abstract base class for gating models. It defines the basic structure and methods required for gating models.  (Don't use this, but you can extend it)                         |
+| `LongestMessageGatingModel`    | A gating model that assigns scores based on the length of the messages. It gives ones for the longest 'n' messages and zeros for the rest. |
+| `RandomGatingModel`            | A gating model that assigns random scores to each neuron in the network using a specified distribution.                                    |
+| `ConstantGatingModel`          | A gating model that assigns a constant score to each neuron in the network.                                                                 |
+| `MaskedGatingModel`            | A gating model that applies a masking mechanism to filter the scores based on a specified mask.                                            |
+| `SequentialGatingModel`        | A gating model that sequentially processes input messages using an embedding layer and LSTM layers to generate scores for each neuron.      |
+| `HuggingFaceGatingModel`       | A gating model that uses a pre-trained Hugging Face language model for encoding messages and generating scores for each neuron.             |
+
+
+### Reward Models
+| Class Name                | Description                                                                                                     |
+|---------------------------|-----------------------------------------------------------------------------------------------------------------|
+| `BaseRewardModel`         | An abstract base class for reward models. It defines the basic structure and methods required for reward models. (Don't use this, but you can extend it)  |
+| `DummyRewardModel`        | A reward model that assigns constant values or specific types of rewards to completions based on different criteria such as question length, longest word, or number of words. |
+| `ConstantRewardModel`     | A reward model that assigns a constant score to completions without considering their content.                   |
+| `RandomRewardModel`       | A reward model that assigns random scores to completions using a specified distribution. The scores can be constant or varying. |
+| `CustomRewardModel`       | A custom reward model that can be defined and customized with specific attributes and functionality based on user requirements. |
+| `HuggingFaceRewardModel`  | A reward model that uses a pre-trained Hugging Face language model for encoding and generating rewards based on completions. It leverages the transformer architecture for language understanding. |
+
+
+
+### Dendrite Pools
+| Class Name                  | Description                                        |
+|-----------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `DummyDendritePool`         | A class that imitates the behavior of the miner network. It extends `MetagraphMixin` and `torch.nn.Module`. It loads a dataset, stores questions and answers from the dataset, and provides a method for applying the RPC logic. It returns random data from the dataset instead of querying the network.                          |
+
+### Metagraphs
+| Class Name                | Description                                                                                                                                                    |
+|--------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `BaseMetagraph`          | An abstract base class for metagraphs. It defines the basic structure and methods required for metagraphs.                                                   |
+| `DummyMetagraph`         | A dummy implementation of the metagraph class. It provides methods for syncing and retrieving information about the metagraph.                                |
+| `Metagraph`              | A subclass of the metagraph class that extends its functionality. It adds a history queue to keep track of changes in the metagraph.                          |
+
+
+### Subtensors
+| Class Name                | Description                                                                                                                                                       |
+|---------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `BaseSubtensor`           | An abstract base class for subtensors. It defines the basic structure and methods required for subtensors.                                                       |
+| `DummySubtensor`          | A dummy implementation of the subtensor class. It provides methods for retrieving delegated information, setting weights, and accessing the metagraph and configuration. |
+| `Subtensor`               | A subclass of the subtensor class that extends its functionality. It provides additional methods specific to the Bittensor network.                                |
+
+
+
 ## Config File
 
 An experiment consists of several steps which are all defined in the **config file**. An experiment may be run on a single step or a subset of steps.

@@ -10,11 +10,11 @@ from typing import List, Union
 from base.values import ConstantValue, RandomValue, FrozenRandomValue
 # expose raw GatingModel for use in other modules
 from sources.neuron import neuron
+
 # TODO: inherit from GatingModel and just override init
 
 
-class BaseGatingModel( torch.nn.Module, ABC ):
-
+class BaseGatingModel(torch.nn.Module, ABC):
     def __init__(self, metagraph):
         super(BaseGatingModel, self).__init__()
         self._metagraph = metagraph
@@ -39,26 +39,33 @@ class LambdaLayer(torch.nn.Module):
         return self.lambd(x)
 
 
-class LongestMessageGatingModel( BaseGatingModel ):
-
+class LongestMessageGatingModel(BaseGatingModel):
     def __init__(self, metagraph=None):
-        super(LongestMessageGatingModel, self).__init__( )
+        super(LongestMessageGatingModel, self).__init__()
         self._metagraph = metagraph
 
     def forward(self, x, n):
         # return ones for the longest n messages and zeros for the rest
         threshold = torch.topk(x, n, largest=False).values[-1]
-        return torch.ones( x.shape ) * (x >= threshold).float()
+        return torch.ones(x.shape) * (x >= threshold).float()
 
     def backward(self, scores, rewards):
 
-        return torch.ones( self.metagraph.n.item() )
+        return torch.ones(self.metagraph.n.item())
 
 
-class RandomGatingModel( BaseGatingModel ):
-
-    def __init__(self, frozen=False, seed=0, distribution='uniform', p0=1, p1=0, metagraph=None, config: 'bittensor.config' = None):
-        super(RandomGatingModel, self).__init__( metagraph=metagraph )
+class RandomGatingModel(BaseGatingModel):
+    def __init__(
+        self,
+        frozen=False,
+        seed=0,
+        distribution="uniform",
+        p0=1,
+        p1=0,
+        metagraph=None,
+        config: "bittensor.config" = None,
+    ):
+        super(RandomGatingModel, self).__init__(metagraph=metagraph)
 
         value_type = FrozenRandomValue if frozen else RandomValue
         self.value = value_type(seed=seed, distribution=distribution, p0=p0, p1=p1)
@@ -69,13 +76,12 @@ class RandomGatingModel( BaseGatingModel ):
 
     def backward(self, scores, rewards):
         # each neuron is given a random score
-        return self.value(torch.zeros( self.metagraph.n.item() ), self.metagraph.n.item())
+        return self.value(torch.zeros(self.metagraph.n.item()), self.metagraph.n.item())
 
 
-class ConstantGatingModel( BaseGatingModel ):
-
+class ConstantGatingModel(BaseGatingModel):
     def __init__(self, value=1, metagraph=None):
-        super(ConstantGatingModel, self).__init__( metagraph=metagraph )
+        super(ConstantGatingModel, self).__init__(metagraph=metagraph)
         self.value = ConstantValue(value)
 
     def forward(self, x):
@@ -85,18 +91,25 @@ class ConstantGatingModel( BaseGatingModel ):
     def backward(self, scores, rewards):
 
         # each neuron is given a random score
-        return torch.random( self.metagraph.n.item() )
+        return torch.random(self.metagraph.n.item())
 
 
-class MaskedGatingModel( BaseGatingModel ):
-
+class MaskedGatingModel(BaseGatingModel):
     def __init__(self, mask=10, metagraph=None):
-        super(MaskedGatingModel, self).__init__( metagraph=metagraph )
-        raise NotImplementedError(f'Not implemented yet.')
+        super(MaskedGatingModel, self).__init__(metagraph=metagraph)
+        raise NotImplementedError(f"Not implemented yet.")
 
-class SequentialGatingModel( BaseGatingModel ):
 
-    def __init__(self, metagraph: 'bittensor.metagraph.Metagraph' = None, config: 'bittensor.config' = None, tokenizer_name: str = None, hidden_size: Union[int, List[int]] = None, embedding_dim: int = None, num_uids: int = None):
+class SequentialGatingModel(BaseGatingModel):
+    def __init__(
+        self,
+        metagraph: "bittensor.metagraph.Metagraph" = None,
+        config: "bittensor.config" = None,
+        tokenizer_name: str = None,
+        hidden_size: Union[int, List[int]] = None,
+        embedding_dim: int = None,
+        num_uids: int = None,
+    ):
         """
         Initializes the SequentialGatingModel. (mostly copied from GatingModel)
         - `metagraph`: A reference to the Bittensor metagraph object.
@@ -106,33 +119,39 @@ class SequentialGatingModel( BaseGatingModel ):
         - `embedding_dim`: Dimension of the embedding layer of the gating model. If `None`, the default size specified in the configuration is used.
         - `num_uids`: Number of uids to gate on. If `None`, the default number specified in the configuration is used.
         """
-        super(SequentialGatingModel, self).__init__( metagraph=metagraph )
-        if config is None: 
+        super(SequentialGatingModel, self).__init__(metagraph=metagraph)
+        if config is None:
             config = neuron.config()
         if tokenizer_name is not None:
             config.gating.tokenizer_name = tokenizer_name
-        if num_uids is not None: 
+        if num_uids is not None:
             config.gating.num_uids = num_uids
         if embedding_dim is not None:
             config.gating.embedding_dim = embedding_dim
-            
+
         # 1. sentence is passed into forward method: 'this is a question' batch_size x sentence_length
         # 2. sentence is tokenized: [12, 54, 39, 90] batch_size x n_tokens
         # 3. tokens are passed into embedding layer: [[0.1, 0.2, 0.3], [0.4, 0.5, 0.6], [0.7, 0.8, 0.9], [0.10, 0.11, 0.12]] batch_size x n_tokens x embedding_size
         # 4. pass embedded tokens into gating model: [score1, score2, score3, score4] num_uids
-            
+
         self.config = config
         self.metagraph = metagraph
-        self.device = torch.device( self.config.neuron.device )
+        self.device = torch.device(self.config.neuron.device)
         # Tokenizer
-        self.tokenizer = AutoTokenizer.from_pretrained(self.config.gating.tokenizer_name)
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            self.config.gating.tokenizer_name
+        )
         self.tokenizer.model_max_length = 128
         # Make hidden size a list if it is not already
-        self.hidden_size = hidden_size if isinstance(hidden_size, list) else [hidden_size]
-        
+        self.hidden_size = (
+            hidden_size if isinstance(hidden_size, list) else [hidden_size]
+        )
+
         # Embedding layer (not trainable)
         self.embedding_dim = self.config.gating.embedding_dim
-        self.embedding_layer = torch.nn.Embedding(num_embeddings=self.tokenizer.vocab_size, embedding_dim=self.embedding_dim)
+        self.embedding_layer = torch.nn.Embedding(
+            num_embeddings=self.tokenizer.vocab_size, embedding_dim=self.embedding_dim
+        )
         self.embedding_layer.weight.requires_grad = False
         
         # LSTM layers
@@ -150,15 +169,15 @@ class SequentialGatingModel( BaseGatingModel ):
         ]))
 
         self.optimizer = torch.optim.SGD(
-            [ {"params": self.parameters()} ],
-            lr = self.config.gating.learning_rate,
-            momentum = self.config.gating.momentum,
+            [{"params": self.parameters()}],
+            lr=self.config.gating.learning_rate,
+            momentum=self.config.gating.momentum,
         )
-        
-    def forward( self, message: str ) -> 'torch.FloatTensor':
+
+    def forward(self, message: str) -> "torch.FloatTensor":
         """ Runs a forward pass through the model.
             Args:
-                message (:obj:`str`): 
+                message (:obj:`str`):
                     text message to be encoded.
             Returns:
                 scores (:obj:`torch.FloatTensor` of shape :obj:`(network_size)`):
@@ -169,18 +188,19 @@ class SequentialGatingModel( BaseGatingModel ):
 
         return output
 
-
-    def backward( self, scores: torch.FloatTensor, rewards: torch.FloatTensor ): 
+    def backward(self, scores: torch.FloatTensor, rewards: torch.FloatTensor):
         """ Runs a backward pass through the model.
             Args:
                 scores (:obj:`torch.FloatTensor` of shape :obj:`(metagraph.n)`):
                     Scores for each uids as output by the gating model.
                 rewards (:obj:`torch.FloatTensor` of shape :obj:`(metagraph.n)`):
                     Rewards for each uids as output by the reward model.
-        """   
-        normalized_scores = torch.nn.functional.softmax( scores, dim=0 ).to( self.device )
-        normalized_rewards = torch.nn.functional.softmax( rewards, dim=0 ).to( self.device )
-        loss = torch.nn.functional.mse_loss( normalized_scores, normalized_rewards.detach() )
+        """
+        normalized_scores = torch.nn.functional.softmax(scores, dim=0).to(self.device)
+        normalized_rewards = torch.nn.functional.softmax(rewards, dim=0).to(self.device)
+        loss = torch.nn.functional.mse_loss(
+            normalized_scores, normalized_rewards.detach()
+        )
         loss.backward()
         self.optimizer.step()
 
@@ -303,7 +323,7 @@ class HuggingFaceGatingModel(BaseGatingModel):
     def forward(self, message: str) -> "torch.FloatTensor":
         """ Runs a forward pass through the model.
             Args:
-                message (:obj:`str`): 
+                message (:obj:`str`):
                     text message to be encoded.
             Returns:
                 scores (:obj:`torch.FloatTensor` of shape :obj:`(network_size)`):
