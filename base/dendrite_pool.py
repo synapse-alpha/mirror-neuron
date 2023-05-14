@@ -3,6 +3,9 @@ import torch
 import random
 from dataclasses import dataclass
 import queue
+import bittensor
+
+from typing import List, Dict, Optional, Callable, Any, Tuple, Union
 
 from base.metagraph import MetagraphMixin
 
@@ -28,12 +31,12 @@ class DummyDendritePool(MetagraphMixin, torch.nn.Module):
 
     def __init__(
         self,
-        data_path,
-        fail_rate=0.1,
-        fitness=0,
-        baseline_fail_rate=0,
-        baseline_fitness=0,
-        metagraph=None,
+        data_path: str,
+        fail_rate: Union[float, dict] = 0.1,
+        fitness: float = 0,
+        baseline_fail_rate: float = 0,
+        baseline_fitness: float = 0,
+        metagraph: 'bittensor.metagraph' = None,
         **kwargs,
     ):
         super(DummyDendritePool, self).__init__()
@@ -46,7 +49,7 @@ class DummyDendritePool(MetagraphMixin, torch.nn.Module):
 
         if isinstance(fail_rate, float):
             baseline_fail_rate = fail_rate
-            fail_rate = {}
+            fail_rate: dict = {}
         if not isinstance(fail_rate, dict):
             raise ValueError(
                 f"fail_rate must be a float or a dict, got {type(fail_rate)}"
@@ -55,20 +58,9 @@ class DummyDendritePool(MetagraphMixin, torch.nn.Module):
         # let user pass a subset of uids and cast them to int
         self.fail_rate = {int(uid): rate for uid, rate in fail_rate.items()}
         self.baseline_fail_rate = baseline_fail_rate
+        self.history: 'queue.Queue' = queue.Queue()
 
-        if isinstance(fitness, float):
-            baseline_fitness = fitness
-            fitness = {}
-        if not isinstance(fitness, dict):
-            raise ValueError(f"fitness must be a float or a dict, got {type(fitness)}")
-
-        # let user pass a subset of uids and cast them to int
-        self.fitness = {int(uid): fit for uid, fit in fitness.items()}
-        self.baseline_fitness = baseline_fitness
-
-        self.history = queue.Queue()
-
-    def apply(self, roles, messages, return_call, timeout, uid) -> 'DummyRPCResponse':
+    def apply(self, roles: List[str], messages: List[str], return_call: Any, timeout: int, uid: int) -> 'DummyRPCResponse':
 
         if random.random() < self.fail_rate.get(int(uid), self.baseline_fail_rate):
             return DummyRPCResponse()
@@ -94,13 +86,13 @@ class DummyDendritePool(MetagraphMixin, torch.nn.Module):
             question_index=index,
         )
 
-    def forward(self, roles, messages, uids=None, return_call=True, timeout=12):
+    def forward(self, roles: List[str], messages: List[str], uids: List[int] = [], return_call: bool = True, timeout: int = 12) -> Union[List['DummyRPCResponse'], None]:
         # BUG? uids should start from 1
         # if uids is None: uids = range( self.metagraph.n.item() )
         if uids is None:
             uids = self.metagraph.uids
 
-        def call_single_uid(uid: int) -> str:
+        def call_single_uid(uid: int) -> 'DummyRPCResponse':
             return self.apply(
                 roles=roles,
                 messages=messages,
@@ -109,4 +101,5 @@ class DummyDendritePool(MetagraphMixin, torch.nn.Module):
                 uid=uid,
             )
 
-        return [call_single_uid(uid=uid) for uid in uids]
+        if return_call:
+            return [call_single_uid(uid=uid) for uid in uids]
