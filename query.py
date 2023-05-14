@@ -1,5 +1,4 @@
 import wandb
-import torch
 import time
 import tqdm
 import pandas as pd
@@ -25,10 +24,27 @@ def run_train(model):
     ignore = template.ignore_attr or {}
     max_iter = template.method.get("args", {}).get("max_iter", 1)
 
+    gating_model_loss_plot = {
+        'epoch': [],
+        'query_loss': [],
+        'completion_loss': []
+    }
+
+    wandb.watch(model.gating_model.model, log='gradients', log_freq=1, log_graph=True)
+
     for i in tqdm.tqdm(range(max_iter)):
         t0 = time.time()
         qsize = model.history.qsize()
         model.train(max_iter=1)
+
+        # The train method has two backward passes, one for the query and one for the completion model
+        gating_model_loss_plot['epoch'].append(i)
+
+        if model.gating_model.loss_history.qsize() >= 2:
+            gating_model_loss_plot['query_loss'].append(model.gating_model.loss_history.get()) # 1st pass
+            gating_model_loss_plot['completion_loss'].append(model.gating_model.loss_history.get()) # 2nd pass
+
+        wandb.log({'gating_model_train.epoch': i })        
 
         # add step time and step number to the added queue items
         add_call_metrics(
@@ -41,6 +57,13 @@ def run_train(model):
                 for event in model.history.queue
             ]
             save_results(save_path, events)
+
+    wandb.log({"gating_model_train.loss": wandb.plot.line_series(
+        xs=gating_model_loss_plot['epoch'],
+        ys=[gating_model_loss_plot['query_loss'], gating_model_loss_plot['completion_loss']],
+        keys=["Query loss", "Completion loss"],
+        title="Gating model training loss",
+        xname="Epoch")})
 
 
 def run_forward(model, data):
