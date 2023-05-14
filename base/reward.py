@@ -1,45 +1,47 @@
 import bittensor
 import torch
 
-from base.values import ConstantValue, RandomValue
 from abc import ABC, abstractmethod
+from typing import Dict, List, Optional, Any, Union
 
-# expose raw RewardModel for use in other modules
+# # expose raw RewardModel for use in other modules
 from sources.reward import RewardModel
+from base.values import ConstantValue, RandomValue
+
 
 from transformers import AutoModelForCausalLM, AutoTokenizer, AutoConfig
 
-# include query failure as an additional behavior
+# TODO: include query failure as an additional behavior
 # TODO: inherit from RewardModel and just override init
 
 
 class BaseRewardModel(torch.nn.Module, ABC):
-    def __init__(self, metagraph, **kwargs):
+    def __init__(self, metagraph: 'bittensor.metagraph', **kwargs):
         super(BaseRewardModel, self).__init__()
         self._metagraph = metagraph
         # TODO: Hardcoded base tokenizer to facilitate code development. Make it dynamic to config in the future
         self.tokenizer = AutoTokenizer.from_pretrained("EleutherAI/gpt-j-6b")
 
     @abstractmethod
-    def forward(self, x):
+    def forward(self, x: Any) -> Union[ConstantValue, RandomValue, torch.FloatTensor]:
         pass
 
     @abstractmethod
-    def backward(self, completions, rewards):
+    def backward(self, completions: torch.Tensor, rewards: torch.Tensor) -> Union[ConstantValue, RandomValue, torch.FloatTensor]:
         pass
 
     @abstractmethod
-    def reward(self, completions):
+    def reward(self, completions: torch.Tensor) -> torch.FloatTensor:
         pass
 
 
 class DummyRewardModel(BaseRewardModel):
     def __init__(
         self,
-        reward_type="question_length",
-        forward_value=ConstantValue(value=1),
-        backward_value=ConstantValue(value=1),
-        metagraph=None,
+        reward_type: str = "question_length",
+        forward_value: ConstantValue = ConstantValue(value=1),
+        backward_value: ConstantValue = ConstantValue(value=1),
+        metagraph: 'bittensor.metagraph' = None,
         **kwargs
     ):
         super(DummyRewardModel, self).__init__(metagraph=metagraph)
@@ -47,16 +49,16 @@ class DummyRewardModel(BaseRewardModel):
         self.forward_value = forward_value
         self.backward_value = backward_value
 
-    def forward(self, x):
+    def forward(self, x) -> ConstantValue:
         # each neuron is given a score of 1
         return self.forward_type(x, self.metagraph.n.item())
 
-    def backward(self, completions, rewards):
+    def backward(self, completions: torch.Tensor, rewards: torch.Tensor) -> ConstantValue:
         # each neuron is given a score of 1
         return self.backward_value(completions, rewards, n=self.metagraph.n.item())
 
-    def reward(self, completions):
-        def reward_fn(samples):
+    def reward(self, completions: torch.Tensor) -> torch.FloatTensor:
+        def reward_fn(samples: torch.Tensor) -> torch.FloatTensor:
             if self.reward_type == "question_length":
                 rewards = [len(msg) for msg in samples]
             elif self.reward_type == "longest_word":
@@ -70,20 +72,20 @@ class DummyRewardModel(BaseRewardModel):
 
 
 class ConstantRewardModel(BaseRewardModel):
-    def __init__(self, forward_value=1, backward_value=0, metagraph=None, **kwargs):
+    def __init__(self, forward_value: int = 1, backward_value: int = 0, metagraph: 'bittensor.metagraph' = None, **kwargs):
         super(ConstantRewardModel, self).__init__(metagraph=metagraph)
         self.forward_value = ConstantValue(value=forward_value)
         self.backward_value = ConstantValue(value=backward_value)
 
-    def forward(self, x):
+    def forward(self, x) -> ConstantValue:
         # each neuron is given a constant score
         return self.forward_value(x, n=1)
 
-    def backward(self, completions, rewards, n=1):
+    def backward(self, completions: torch.Tensor, rewards: torch.Tensor, n: int = 1) -> ConstantValue:
         # each neuron is given a constant score
         return self.backward_value(completions, rewards, n=self.metagraph.n.item())
 
-    def reward(self, completions):
+    def reward(self, completions: torch.Tensor) -> torch.FloatTensor:
 
         scores = [self.forward([completion]) for completion in completions]
         return torch.tensor(scores, dtype=torch.float32)
@@ -104,15 +106,15 @@ class RandomRewardModel(BaseRewardModel):
             p1=kwargs.get("backward_p1", p1),
         )
 
-    def forward(self, x):
+    def forward(self, x: Any) -> ConstantValue:
         # each neuron is given a constant score
         return self.forward_value(x, n=1)
 
-    def backward(self, completions, rewards):
+    def backward(self, completions: torch.Tensor, rewards: torch.Tensor) -> ConstantValue:
         # each neuron is given a constant score
         return self.backward_value(completions, rewards, n=self.metagraph.n.item())
 
-    def reward(self, completions):
+    def reward(self, completions: torch.Tensor) -> torch.FloatTensor:
 
         return torch.tensor(
             [self.forward([completion]) for completion in completions],
@@ -160,19 +162,19 @@ class HuggingFaceRewardModel(BaseRewardModel):
 
     def forward(
         self,
-        input_ids=None,
-        past_key_values=None,
-        attention_mask=None,
-        token_type_ids=None,
-        position_ids=None,
-        head_mask=None,
-        inputs_embeds=None,
-        mc_token_ids=None,
-        labels=None,
-        return_dict=False,
-        output_attentions=False,
-        output_hidden_states=False,
-    ):
+        input_ids: torch.Tensor = None,
+        past_key_values: torch.Tensor = None,
+        attention_mask: torch.Tensor = None,
+        token_type_ids: torch.Tensor = None,
+        position_ids: torch.Tensor = None,
+        head_mask: torch.Tensor = None,
+        inputs_embeds: torch.Tensor = None,
+        mc_token_ids: torch.Tensor = None,
+        labels: torch.Tensor = None,
+        return_dict: bool = False,
+        output_attentions: bool = False,
+        output_hidden_states: bool = False,
+    ) -> Dict[str, torch.FloatTensor]:
         loss = None
         transformer_outputs = self.transformer(
             input_ids,
@@ -248,7 +250,7 @@ class HuggingFaceRewardModel(BaseRewardModel):
         }
 
     def reward(self, completions: List[str]) -> torch.FloatTensor:
-        def reward_fn(samples):
+        def reward_fn(samples: torch.Tensor) -> torch.FloatTensor:
             if samples is None:
                 return 0
             scores_list = []
