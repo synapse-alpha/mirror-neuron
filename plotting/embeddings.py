@@ -1,15 +1,40 @@
 import tqdm
 import torch
 import umap
-
+import networkx as nx
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
+import plotly.express as px
 import matplotlib.pyplot as plt
+from plotting.config import plotly_config
 
+def plot_network_embedding(df, ntops=None):
+    if ntops is None:
+        ntops = [1, 5, 10, 50, 100, 500]
+    figs = {}
+    for ntop in ntops:
+        d = {}
+        for uid in tqdm.tqdm(df.uids.unique()):
+            c = df.loc[df.uids==uid,'all_completions'].value_counts()
+            d[uid] = set(c.index[:ntop])
 
+        uids = list(d.keys())
+        a = np.zeros((len(uids),len(uids)))
+        for i, uid in enumerate(tqdm.tqdm(uids)):
+            for j, uid2 in enumerate(uids):
+                if j<i:
+                    a[i,j] = a[j,j] = len( d[uid].intersection(d[uid2]) ) /ntop
+                
+        g = nx.from_numpy_array(a)
+        z = pd.DataFrame(nx.spring_layout(g)).T.reset_index().rename(columns={0:'x',1:'y','index':'UID'})
+        figs[ntop] = px.scatter(z, x='x',y='y', 
+                        title=f'Graph for Top {ntop} Completion Similarities',
+                        opacity=0.5,color='UID', color_continuous_scale='BlueRed',
+                        **plotly_config)
+    return figs
 
-def run_sentence_embedding(
+def plot_sentence_embedding(
         df,
         tokenizer=None,
         transformer=None,

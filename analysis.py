@@ -1,15 +1,12 @@
-import os
 import tqdm
-import umap
 import torch
 import wandb
 import numpy as np
 import pandas as pd
-import plotly.express as px
 from pandas.api.types import is_list_like
 
 from utils import load_results
-from loaders.templates import AnalysisConfigTemplate, QueryConfigTemplate
+from loaders.templates import AnalysisConfigTemplate
 
 from plotting.correlation import plot_score_reward_correlation
 from plotting.heatmap import run_plot_uids
